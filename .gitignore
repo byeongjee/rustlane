@@ -1,0 +1,7 @@
+/target
+*.o
+*.bin
+ispc-bench/*.llvm
+ispc-bench/*.ispc.bin
+ispc-ref/bench_mandel_x4
+ispc-ref/bench_mandel_x8
