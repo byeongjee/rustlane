@@ -64,7 +64,7 @@ fn binomial_put(
     for jr in 0..64usize {
         let j = 63 - jr;
         for k in 0..j {
-            let nv = (omp * vv[k] + pu * vv[k + 1]) / disc;
+            let nv = math::fma(omp, vv[k], pu * vv[k + 1]) / disc;
             vv[k] = nv;
         }
     }

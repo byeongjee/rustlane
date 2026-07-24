@@ -3,6 +3,7 @@ use crate::exec::{AllOn, BoolGuard, Exec, VMask, VMaskGuard};
 use crate::varying::Varying;
 use core::ops::Add;
 use core::simd::cmp::SimdPartialOrd;
+use core::simd::num::{SimdInt, SimdUint};
 use core::simd::ptr::SimdConstPtr;
 use core::simd::{LaneCount, Mask, Simd, SimdElement, SupportedLaneCount};
 
@@ -91,6 +92,11 @@ where
     LaneCount<N>: SupportedLaneCount,
 {
     fn active_mask(self) -> Mask<i32, N>;
+
+    #[inline(always)]
+    fn all_known_active(&self) -> bool {
+        false
+    }
 }
 
 impl<const N: usize> ActiveMask<N> for AllOn
@@ -101,6 +107,10 @@ where
     fn active_mask(self) -> Mask<i32, N> {
         Mask::splat(true)
     }
+    #[inline(always)]
+    fn all_known_active(&self) -> bool {
+        true
+    }
 }
 
 impl<const N: usize> ActiveMask<N> for BoolGuard
@@ -110,6 +120,10 @@ where
     #[inline(always)]
     fn active_mask(self) -> Mask<i32, N> {
         Mask::splat(self.0)
+    }
+    #[inline(always)]
+    fn all_known_active(&self) -> bool {
+        self.0
     }
 }
 
@@ -359,12 +373,37 @@ where
     type Out = Varying<T, N>;
     #[inline(always)]
     fn spmd_read(&self, idx: Varying<i32, N>, exec: E) -> Varying<T, N> {
+        let all_active = exec.all_known_active();
         let active = exec.active_mask();
         let idxs = idx.cast::<usize>().0;
         debug_assert!(
             gather_in_bounds::<N>(idxs, self.len(), active),
             "spmd_read: gather index out of bounds on an active lane"
         );
+        if all_active {
+            if all_lanes_in_bounds(idx.0, self.len()) {
+                return Varying(unsafe {
+                    Simd::gather_select_unchecked(
+                        self,
+                        Mask::splat(true),
+                        idxs,
+                        Simd::default(),
+                    )
+                });
+            }
+        } else {
+            let sel = active.select(idx.0, Simd::splat(0));
+            if all_lanes_in_bounds(sel, self.len()) {
+                return Varying(unsafe {
+                    Simd::gather_select_unchecked(
+                        self,
+                        active.cast::<isize>(),
+                        sel.cast::<usize>(),
+                        Simd::default(),
+                    )
+                });
+            }
+        }
         Varying(Simd::gather_select(self, active.cast::<isize>(), idxs, Simd::default()))
     }
     #[inline(always)]
@@ -384,12 +423,31 @@ where
 {
     #[inline(always)]
     fn spmd_write(&mut self, idx: Varying<i32, N>, exec: E, value: Varying<T, N>) {
+        let all_active = exec.all_known_active();
         let active = exec.active_mask();
         let idxs = idx.cast::<usize>().0;
         debug_assert!(
             gather_in_bounds::<N>(idxs, self.len(), active),
             "spmd_write: scatter index out of bounds on an active lane"
         );
+        if all_active {
+            if all_lanes_in_bounds(idx.0, self.len()) {
+                unsafe {
+                    value.0.scatter_select_unchecked(self, Mask::splat(true), idxs);
+                }
+                return;
+            }
+        } else {
+            let sel = active.select(idx.0, Simd::splat(0));
+            if all_lanes_in_bounds(sel, self.len()) {
+                unsafe {
+                    value
+                        .0
+                        .scatter_select_unchecked(self, active.cast::<isize>(), sel.cast::<usize>());
+                }
+                return;
+            }
+        }
         value.0.scatter_select(self, active.cast::<isize>(), idxs);
     }
     #[inline(always)]
@@ -400,6 +458,15 @@ where
             value.0.scatter_select_unchecked(self, active.cast::<isize>(), idxs);
         }
     }
+}
+
+
+#[inline(always)]
+fn all_lanes_in_bounds<const N: usize>(idxs: Simd<i32, N>, len: usize) -> bool
+where
+    LaneCount<N>: SupportedLaneCount,
+{
+    len <= i32::MAX as usize && (idxs.cast::<u32>().reduce_max() as usize) < len
 }
 
 
@@ -704,6 +771,66 @@ mod tests {
         let widx = Vi::from_array([0, 999_999, 2, -5]);
         unsafe { out[..].spmd_write_unchecked(widx, m, Varying::from_array([100, 200, 300, 400])) };
         assert_eq!(out, [100, 1, 300, 3]);
+    }
+
+
+    #[test]
+    fn gather_scatter_fast_path_boundaries() {
+        let a: Vec<i32> = (100..108).collect(); 
+        let idx = Vi::from_array([0, 7, 3, 7]);
+
+        let r = a[..].spmd_read(idx, AllOn);
+        assert_eq!(r.to_array(), [100, 107, 103, 107]);
+        let r = a[..].spmd_read(idx, BoolGuard(true));
+        assert_eq!(r.to_array(), [100, 107, 103, 107]);
+        let r = a[..].spmd_read(idx, BoolGuard(false));
+        assert_eq!(r.to_array(), [0; N]);
+
+        let mut out = vec![0i32; 8];
+        out[..].spmd_write(idx, AllOn, Varying::from_array([1, 2, 3, 4]));
+        assert_eq!(out, [1, 0, 0, 3, 0, 0, 0, 4]);
+        let mut out = vec![0i32; 8];
+        out[..].spmd_write(idx, BoolGuard(true), Varying::from_array([1, 2, 3, 4]));
+        assert_eq!(out, [1, 0, 0, 3, 0, 0, 0, 4]);
+        let mut out = vec![9i32; 8];
+        out[..].spmd_write(idx, BoolGuard(false), Varying::from_array([1, 2, 3, 4]));
+        assert_eq!(out, [9; 8]);
+
+        let gidx = Vi::from_array([0, -1, 7, 999_999]);
+        let m = VMask::<N>(mask([true, false, true, false]));
+        let r = a[..].spmd_read(gidx, m);
+        assert_eq!(r.to_array(), [100, 0, 107, 0]);
+        let mut out = vec![0i32; 8];
+        out[..].spmd_write(gidx, m, Varying::from_array([1, 2, 3, 4]));
+        assert_eq!(out, [1, 0, 0, 0, 0, 0, 0, 3]);
+
+        let mut out = vec![0i32; 8];
+        out[..].spmd_write(
+            Vi::from_array([2, -7, 2, 999]),
+            m,
+            Varying::from_array([10, 20, 30, 40]),
+        );
+        assert_eq!(out, [0, 0, 30, 0, 0, 0, 0, 0]);
+    }
+
+
+    #[test]
+    fn gather_scatter_all_inactive_garbage() {
+        let none = VMask::<N>(mask([false; N]));
+        let garbage = Vi::from_array([i32::MIN, -1, i32::MAX, 999_999]);
+
+        let a = [5i32, 6, 7, 8];
+        let r = a[..].spmd_read(garbage, none);
+        assert_eq!(r.to_array(), [0; N]);
+        let mut out = [1i32, 2, 3, 4];
+        out[..].spmd_write(garbage, none, Varying::splat(-1));
+        assert_eq!(out, [1, 2, 3, 4]);
+
+        let e: [i32; 0] = [];
+        let r = e[..].spmd_read(garbage, none);
+        assert_eq!(r.to_array(), [0; N]);
+        let mut e: [i32; 0] = [];
+        e[..].spmd_write(garbage, none, Varying::splat(-1));
     }
 
     #[test]

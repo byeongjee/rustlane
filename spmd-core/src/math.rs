@@ -122,6 +122,18 @@ where
     Varying((b.0 - a.0).mul_add(t.0, a.0))
 }
 
+#[inline(always)]
+pub fn fma<const N: usize>(
+    a: Varying<f32, N>,
+    b: Varying<f32, N>,
+    c: Varying<f32, N>,
+) -> Varying<f32, N>
+where
+    LaneCount<N>: SupportedLaneCount,
+{
+    Varying(a.0.mul_add(b.0, c.0))
+}
+
 
 #[inline(always)]
 pub fn rsqrt<const N: usize>(x: Varying<f32, N>) -> Varying<f32, N>
@@ -450,6 +462,18 @@ mod tests {
 
         let l = lerp(Vf::splat(10.0), Vf::splat(20.0), Vf::splat(0.25));
         assert_eq!(l.to_array(), [12.5; N]);
+    }
+
+    #[test]
+    fn fma_matches_scalar_mul_add() {
+        let a = Vf::from_array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]);
+        let b = Vf::from_array([0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5]);
+        let c = Vf::from_array([-1.0, 0.25, 10.0, -3.5, 100.0, 0.0, -7.0, 2.5]);
+        let got = fma(a, b, c).to_array();
+        let (av, bv, cv) = (a.to_array(), b.to_array(), c.to_array());
+        for i in 0..N {
+            assert_eq!(got[i], av[i].mul_add(bv[i], cv[i]));
+        }
     }
 
     #[test]
