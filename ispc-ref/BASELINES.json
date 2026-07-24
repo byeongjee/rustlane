@@ -1,0 +1,71 @@
+{
+  "_meta": {
+    "description": "Machine-readable baseline manifest for the ISPC reference benchmarks. Built and run via ispc-ref/Makefile (make build-all && make run-all). All ms values are PROVISIONAL (measured under concurrent background build load; min-of-15 timed reps, contention-resistant). Final evaluation re-measures. Every _x4 run dumps the canonical reference output into ref-out/.",
+    "platform": "Apple Silicon aarch64 / NEON",
+    "ispc": "1.30.0 (LLVM 22)",
+    "compiler": "clang++ -O3 -std=c++17",
+    "timing": "std::chrono::steady_clock, 3 warmup + min-of-15 timed reps, whole-benchmark granularity"
+  },
+  "mandelbrot": {
+    "ispc_targets": [
+      {"target": "neon-i32x4", "ms": 26.450},
+      {"target": "neon-i32x8", "ms": 14.578}
+    ],
+    "serial_ms": 78.1,
+    "checksum": "27303781 (integer sum over all 768*512 iteration counts; ISPC neon-i32x4 and neon-i32x8 both give 27303781. Serial gives 27303605, diff 176 out of 27.3M ~= 6.4e-6 relative, from the foreach/unmasked-vs-strict divergence on Mandelbrot-set boundary pixels; well within tolerance.)",
+    "workload": "ISPC example default: 768x512 image (393216 pixels), maxIterations=256, view rectangle (-2,-1)..(1,1). Output = int32 iteration-count image. One full-image pass per timed rep. Serial reference (mandel/mandelbrot_serial) inlined in the driver from ispc-bench/mandelbrot_serial.cpp; no tasks in this kernel.",
+    "ref_output": "/Users/byeongjee/side/rust-ispc/ispc-ref/ref-out/mandelbrot.bin (393216 int32 LE, 1572864 bytes; ISPC neon-i32x4 result, dumped via ./bench_mandel_x4 ref-out/mandelbrot.bin)"
+  },
+  "options": {
+    "ispc_targets": [
+      {"target": "neon-i32x4 binomial_put", "ms": 44.7074},
+      {"target": "neon-i32x8 binomial_put", "ms": 27.3461},
+      {"target": "neon-i32x4 black_scholes", "ms": 0.5833},
+      {"target": "neon-i32x8 black_scholes", "ms": 0.5241}
+    ],
+    "serial_ms": 130.81,
+    "checksum": "25446351.000000 (ISPC: sum of both result arrays, BS=13102023.000000 + binomial=12344328.000000, printed to 6 decimals). Serial checksum 25446379.000000 (BS=13102023.000000 identical, binomial=12344356.000000). Divergence = 28/25.4M ~= 1.1e-6 relative, from fma/rounding in the binomial tree; BS matches bit-for-bit. Well within tolerance.",
+    "workload": "nOptions = 128*1024 = 131072 options; BINOMIAL_NUM = 64; inputs uniform S=100, X=98, T=2, r=0.02, v=5 (ISPC examples/cpu/options default). Two kernels timed separately: black_scholes (Black-Scholes, CND polynomial approx) and binomial_put (64-step binomial tree). Timed at whole-benchmark granularity = one full pass over all 131072 options per rep; 3 warmup + min-of-15 timed reps each. Non-task ISPC entry points used (black_scholes_ispc, binomial_put_ispc); the *_ispc_tasks launch variants are present in the object but never called.",
+    "ref_output": "/Users/byeongjee/side/rust-ispc/ispc-ref/ref-out/options_bs.bin (131072 f32 LE, 524288 bytes, sha256 b94f5fd0da58ce63a767dc4fb87797dd6ea23b666f9a984a67469a7e5987c7c1); /Users/byeongjee/side/rust-ispc/ispc-ref/ref-out/options_binomial.bin (131072 f32 LE, 524288 bytes, sha256 b080d7a5e4f1b9ae0bf62e4463a55e41f736e088a67ee2ec2cd4d97543d1b3f9). These hold the ISPC (neon-i32x4) result arrays. Dumped via ./bench_options_x4 ref-out/options where argv[1] is the path prefix ('_bs.bin'/'_binomial.bin' appended)."
+  },
+  "stencil": {
+    "ispc_targets": [
+      {"target": "neon-i32x4", "ms": 113.439},
+      {"target": "neon-i32x8", "ms": 102.732}
+    ],
+    "serial_ms": 111.011,
+    "checksum": "16983763.935355 (double-accumulated sum over the buffer written on the final iteration t=5, which is Aeven=A[0]. ISPC and serial are bitwise-identical: reldiff 0.000e+00. Both neon targets agree.)",
+    "workload": "ISPC example default (examples/cpu/stencil). Grid Nx=Ny=Nz=256, halo width=4, interior [4,252)^3. Iteration range t=[0,6) => 6 leapfrog stencil steps per benchmark call. coef={0.5,-0.25,0.125,-0.0625}. InitData: A0[x,y,z]=(x<Nx/2)?x/Nx:y/Ny; A1=0; vsq=x*y*z/(Nx*Ny*Nz). 19-tap 3-D stencil (radius 3 per axis). Buffers re-initialized before every timed rep (outside the timed region); the timed region is a single loop_stencil_ispc/serial call over all 6 iterations (whole-benchmark granularity). 3 warmup + min-of-15 timed reps.",
+    "ref_output": "/Users/byeongjee/side/rust-ispc/ispc-ref/ref-out/stencil.bin (67108864 bytes = 16777216 float32; sha256 985328eb8750cefa530153d531722655d0088b58088733b9289fb0055e60afea). Contents = the buffer written on the final iteration t=5 (Aeven=A[0]) from the ISPC neon-i32x4 path, full 256^3 grid including halo."
+  },
+  "volume": {
+    "ispc_targets": [
+      {"target": "neon-i32x4", "ms": 2302.738},
+      {"target": "neon-i32x8", "ms": 1979.82}
+    ],
+    "serial_ms": 3134.142,
+    "checksum": "109129.838867 (canonical = serial, double sum over all 1060864 image floats, and what ref-out/volume.bin holds). ISPC neon-i32x4 = 109129.843138, neon-i32x8 = 109129.843132; serial-vs-ISPC relative difference ~4e-8 (fma/reassociation), well within tolerance.",
+    "workload": "896x1184 image (1,060,864 pixels), ray-marched through a 48x64x48 density volume. Camera from ispc-bench/camera.dat, density from ispc-bench/density_lowres.vol (upstream text-header loaders). Non-task entry point volume_ispc renders the full frame in one call. Timed at whole-benchmark (full-frame render) granularity, 3 warmup + min-of-15.",
+    "ref_output": "/Users/byeongjee/side/rust-ispc/ispc-ref/ref-out/volume.bin (4243456 bytes = 1060864 float32 LE, row-major, dumped from the SERIAL image; sha256 c82796e9b10abcf22ef574cde07dd908b928bcbeb03e453194c5db29ea40d17e)"
+  },
+  "ao": {
+    "ispc_targets": [
+      {"target": "neon-i32x4", "ms": 466.884},
+      {"target": "neon-i32x8", "ms": 392.771}
+    ],
+    "serial_ms": 923.238,
+    "checksum": "365161.535156 (ISPC neon-i32x4, = ref-out/ao_ispc.bin; double sum of all 786432 output floats). Reported separately because RNG streams differ: ISPC neon-i32x8 = 365228.953125, serial = 365323.546875. All three agree within ~0.044% (max abs diff ~162 of ~365k), so no wild divergence. Output range [0,1] as expected for AO occlusion. The dumped reference is the neon-i32x4 path.",
+    "workload": "aobench (Syoyo Fujita) procedural scene: 3 spheres + 1 ground plane, ambient occlusion via Monte Carlo. Image 512x512, NSUBSAMPLES=2 (2x2 primary samples/pixel), NAO_SAMPLES=8 (8x8=64 AO rays per hit). Output = RGB float32 buffer of W*H*3 = 786432 floats. 512x512 is the canonical aobench default. RNG is NOT bit-identical (ISPC seed_rng/frandom keyed on programIndex vs serial drand48()), so checksums are close but not equal by design. 3 warmup + min-of-15 timed reps.",
+    "ref_output": "/Users/byeongjee/side/rust-ispc/ispc-ref/ref-out/ao_ispc.bin (raw LE float32, W*H*3 = 786432 floats = 3145728 bytes, RGB interleaved, from the neon-i32x4 ISPC path; reload+sum = 365161.535156, min 0.0, max 1.0)"
+  },
+  "rt": {
+    "ispc_targets": [
+      {"target": "neon-i32x4", "ms": 106.571},
+      {"target": "neon-i32x8", "ms": 95.766}
+    ],
+    "serial_ms": 315.412,
+    "checksum": "7.1449470502e+08 (canonical = serial, sum of 810000 image floats accumulated in double). ISPC neon-i32x4 and neon-i32x8 both give 7.1449470165e+08, rel diff -4.7e-9 (fma reassociation only). Reference file ref-out/rt.bin re-summed independently == 7.1449470502e+08 (exact match to serial).",
+    "workload": "sponza BVH ray trace at scale=1.0. Image 900x900 (baseWidth/baseHeight from sponza.camera header). Scene: 121149 LinearBVHNodes + 66454 triangles from ispc-bench/sponza.bvh; camera matrices from ispc-bench/sponza.camera. One primary ray per pixel; image[] stores hit depth ray.maxt. All 810000 rays hit geometry (no 1e30 miss sentinel), so the float-sum checksum is well-conditioned. 3 warmup + min-of-15 timed reps, whole-image granularity.",
+    "ref_output": "/Users/byeongjee/side/rust-ispc/ispc-ref/ref-out/rt.bin (810000 raw LE float32, 3240000 bytes; the SERIAL image = canonical ground truth, sha256 938db20fa87098501ae8f25940d3b1c9504782cd50cad570e19714c89770d7a4)"
+  }
+}
