@@ -130,20 +130,49 @@ python3 rustlane-bench/parse_measurements.py aarch64   # or x86_64
 python3 rustlane-bench/make_charts.py aarch64          # or x86_64
 ```
 
-## Feature matrix
+## What works
 
-| Supported | Limitations |
-|---|---|
-| `if` / `else` with divergent (varying) conditions | No `match` on varying values (rewrite as `if`/`else` chains) |
-| `while` / `for` / bare `loop`, with `break` / `continue` / early `return` under divergence | Structs vectorize to `VaryingS<N>` (a generated SoA type), **not** `Varying<S>` |
-| `unmasked! { .. }` (all-lanes block for loop-carried locals) | No `foreach_3d!` / `foreach_4d!` (only 1-D, 2-D, and tiled) |
-| `cif!` / `cwhile!` (opt-in *coherent* control flow, ISPC-style `any()` guards) | Kernel calls must be single-segment lowercase paths; qualified-path calls are not exec-threaded |
-| `foreach!` / `foreach_2d!` / `foreach_tiled!` inline iteration (no closures) | Uniform `while` conditions are unusable inside kernels (use `for` or `loop { if !c { break; } }`) |
-| `#[derive(SpmdValue)]` structs with `#[spmd(uniform)]` fields | Nightly-only (`#![feature(portable_simd)]`); no stable-Rust path |
-| Multi-target x86 dispatch (SSE2 / SSE4.1 / AVX2 / AVX-512) + aarch64 NEON | User type/const generics on kernels are rejected (the macro owns `const N`) |
-| `math` stdlib incl. ISPC-ported transcendentals (`exp` / `log` / `pow` / `sin` / `cos` / `rsqrt` / `rcp`) | |
-| `rng`: LFSR113 combined-Tausworthe varying RNG | |
-| `reduce`: horizontal reductions + cross-lane ops (broadcast / rotate / shift / scan / pack) | |
+- `if` / `else` with divergent (varying) conditions
+- `while` (varying condition) / `for` / bare `loop`, with `break` / `continue` /
+  early `return` under divergence
+- `unmasked! { .. }` — an all-lanes block, for loop-carried locals
+- `cif!` / `cwhile!` — opt-in coherent control flow (ISPC-style `any()` guards)
+- `foreach!` / `foreach_2d!` / `foreach_tiled!` — inline iteration, no closures
+- `#[derive(SpmdValue)]` — a struct vectorizes to a generated SoA type `VaryingS<N>`;
+  `#[spmd(uniform)]` keeps a field scalar
+- `math` — ISPC-ported transcendentals (`exp` / `log` / `pow` / `sin` / `cos` / `rsqrt` / `rcp`)
+- `rng` — LFSR113 combined-Tausworthe varying RNG
+- `reduce` — horizontal reductions and cross-lane ops (broadcast / rotate / shift / scan / pack)
+- Runtime target dispatch: SSE2 / SSE4.1 / AVX2 / AVX-512 on x86-64, NEON on aarch64
+
+Nightly is required and will stay required: `Varying<T, N>` is built on
+`#![feature(portable_simd)]`, which is unstable upstream.
+
+## Not planned
+
+- **`Varying<S>` for a struct `S`.** `Varying<T, N>` is `repr(transparent)` over
+  `Simd<T, N>`, so `T` has to be a scalar. Structs go through
+  `#[derive(SpmdValue)]` to SoA instead.
+- **`match` on a varying scrutinee.** Bindings, guards and exhaustiveness have
+  no lane-wise meaning, and anything that does have one is an `if` / `else`
+  chain written out. Use that.
+- **Explicit generic arguments on a kernel call** (`k::<8>(x)`). The macro
+  supplies `::<N, _>` itself.
+
+## TODO
+
+Language:
+
+- [ ] `foreach_3d!` / `foreach_4d!`
+- [ ] Kernel calls through a qualified path
+- [ ] User type / const generics on a kernel
+- [ ] Uniform (`bool`) `while` conditions
+
+Performance:
+
+- [ ] x86-64 against `avx512skx-i32x16`: black_scholes 2.00×, volume 1.71×, rt 1.42×
+- [ ] aarch64 black_scholes runs under 1 ms; the confidence interval is too wide
+      to read. Needs more reps or a larger workload.
 
 ## Static safety
 
