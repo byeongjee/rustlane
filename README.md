@@ -10,8 +10,8 @@ toolchain: just `#[kernel]`, `#[export]`, and `foreach!`.
 
 ## Status
 
-**Experimental. Nightly-only. The API is unstable and will change without
-notice.**
+Experimental. Nightly-only. The API is unstable and will change without
+notice.
 
 ## What a kernel looks like
 
@@ -52,85 +52,43 @@ still iterating), and the `for` loop keeps running until every lane's mask is
 off, so a lane that has already escaped stops contributing without stopping the
 others.
 
-## Performance
-
-Geometric mean of rustlane / best-ISPC runtime across 7 kernels of ISPC's own
-example suite: **0.82** (rustlane ~18% faster on average on Apple M2 Pro /
-NEON). Six of seven kernels reach parity or beat the best ISPC NEON target; one
-(volume) is slower. x86 (AMD Zen4) numbers are in
-[PERFORMANCE-x86.md](PERFORMANCE-x86.md).
-
-The C++ baseline is split into a **true scalar** floor (`-fno-vectorize`) and
-**auto-vectorized** C++ (`-O3`) — the old single "Serial C++" column was really
-the auto-vectorized one. (For stencil the compiler's auto-vectorizer alone is
-3.1×; for mandelbrot/ao/rt it does essentially nothing.)
-
-| Kernel | scalar | C++ auto-vec | ISPC neon-i32x4 | ISPC neon-i32x8 | rustlane | rustlane / ISPC-best |
-|---|---:|---:|---:|---:|---:|---:|
-| mandelbrot | 77.4 ms | 77.3 ms | 26.1 ms | 14.7 ms | **12.3 ms** | **0.84** |
-| options: black_scholes | 1.57 ms | 1.31 ms | 0.58 ms | 0.52 ms | **0.52 ms** | **0.99** |
-| options: binomial_put | 159.7 ms | 126.5 ms | 43.0 ms | 26.3 ms | 27.0 ms | 1.03 |
-| stencil | 339.9 ms | 108.9 ms | 109.9 ms | 101.7 ms | **94.7 ms** | **0.93** |
-| volume | 3205 ms | 3112 ms | 2267 ms | 1947 ms | 2198 ms | 1.13 |
-| ao | 888.2 ms | 891.9 ms | 450.0 ms | 377.9 ms | **192.2 ms** | **0.51** |
-| rt | 306.5 ms | 306.7 ms | 102.9 ms | 91.7 ms | **50.4 ms** | **0.55** |
-
-> Honest caveat: `ao` and `rt` gain partly from a legitimately different
-> lane-to-work mapping (rustlane's `foreach` forms are 1-D/2-D, not ISPC's
-> 4-D tile), not from codegen alone, and `volume` is a genuine ~13% loss to the
-> cost of memory-safe gathers — see [PERFORMANCE.md](PERFORMANCE.md) for full
-> methodology, environment, and correctness validation.
-
 ## Quick start
 
-rustlane requires a nightly toolchain (for `#![feature(portable_simd)]`). Pin it
-with a `rust-toolchain.toml` next to your `Cargo.toml`:
+Nightly only, and not yet on crates.io — depend on it by path from a checkout:
 
 ```toml
+# rust-toolchain.toml
 [toolchain]
 channel = "nightly"
+
+# Cargo.toml
+[dependencies]
+rustlane = { path = "path/to/rustlane" }
 ```
 
-On **x86-64**, build with AVX2 enabled — otherwise rustlane's 8-lane vectors
-lower to paired 128-bit SSE2 (the x86-64 baseline ISA) and run well below the
-benchmark numbers. Add a `.cargo/config.toml` next to your `Cargo.toml`:
+On x86-64 also enable AVX2, or the 8-lane vectors lower to paired SSE2 and run
+well below the benchmark numbers. aarch64/NEON needs no flag.
 
 ```toml
+# .cargo/config.toml
 [target.'cfg(target_arch = "x86_64")']
 rustflags = ["-C", "target-cpu=x86-64-v3"]   # AVX2 + FMA
 ```
 
-`target-cpu=native` is not worth it here: AVX-512VL gives rustlane's fixed
-8-wide code no benefit — and can slightly regress it — on current hardware (see
-[PERFORMANCE-x86.md](PERFORMANCE-x86.md)). aarch64/NEON needs no flag; NEON is
-the baseline ISA there.
-
-**Not yet on crates.io** (publishing is pending). For now, depend on it by
-path from a checkout of this repository:
-
-```toml
-# Cargo.toml
-[dependencies]
-rustlane = { path = "../rustlane" }
-```
-
-A complete program — define a `#[kernel]`, drive it lane-by-lane from an
-all-uniform `#[export]` entry point with `foreach!`, and call that entry point
-from ordinary Rust:
+A `#[kernel]` is the per-lane program; an `#[export]` is the all-uniform entry
+point that drives it with `foreach!` and is callable as an ordinary safe Rust
+function:
 
 ```rust
 #![feature(portable_simd)]
 use rustlane::prelude::*;
 use rustlane::{export, kernel};
 
-// The per-lane program.
 #[kernel]
 fn scale(x: Varying<f32>, factor: f32) -> Varying<f32> {
     x * factor
 }
 
-// The all-uniform entry point. `foreach!` hands each chunk of `input`
-// to the kernel as a `Varying`; `output[i] = ..` is a contiguous store.
 #[export]
 fn scale_all(input: &[f32], output: &mut [f32], factor: f32) {
     foreach!(i in 0..input.len() {
@@ -143,20 +101,35 @@ fn main() {
     let mut output = vec![0.0f32; input.len()];
     scale_all(&input, &mut output, 2.0);
     assert_eq!(output[10], 20.0);
-    println!("scaled {} elements", output.len());
 }
 ```
 
-```sh
-cargo +nightly build          # or just `cargo build` with the toolchain file
-cargo +nightly run
-cargo +nightly test --workspace
-```
+## Performance
 
-`#[export]` compiles the kernel tree once per SIMD target behind
-`#[target_feature]` shims and picks the widest available at runtime (see
-[How it works](#how-it-works)); the `scale_all` you call is a safe, ordinary
-Rust function.
+Geometric mean of rustlane / ISPC runtime at the same gang width across 7
+kernels of ISPC's own example suite: **0.82** on Apple M2 Pro / NEON (rustlane
+~18% faster), **0.99** on AMD Zen4 / AVX2 (parity). The NEON table follows; x86
+numbers, methodology, and correctness validation are in
+[PERFORMANCE.md](PERFORMANCE.md).
+
+The C++ baseline is split into a scalar floor (`-fno-vectorize`) and
+auto-vectorized C++ (`-O3`). For stencil the auto-vectorizer alone is 3.1×; for
+mandelbrot/ao/rt it does essentially nothing.
+
+| Kernel | scalar | C++ auto-vec | ISPC neon-i32x4 | ISPC neon-i32x8 | rustlane | rustlane / ISPC-best |
+|---|---:|---:|---:|---:|---:|---:|
+| mandelbrot | 77.4 ms | 77.3 ms | 26.1 ms | 14.7 ms | **12.3 ms** | **0.84** |
+| options: black_scholes | 1.57 ms | 1.31 ms | 0.58 ms | 0.52 ms | **0.52 ms** | **0.99** |
+| options: binomial_put | 159.7 ms | 126.5 ms | 43.0 ms | 26.3 ms | 27.0 ms | 1.03 |
+| stencil | 339.9 ms | 108.9 ms | 109.9 ms | 101.7 ms | **94.7 ms** | **0.93** |
+| volume | 3205 ms | 3112 ms | 2267 ms | 1947 ms | 2198 ms | 1.13 |
+| ao | 888.2 ms | 891.9 ms | 450.0 ms | 377.9 ms | **192.2 ms** | **0.51** |
+| rt | 306.5 ms | 306.7 ms | 102.9 ms | 91.7 ms | **50.4 ms** | **0.55** |
+
+> Caveat: `ao` and `rt` gain partly from a different lane-to-work mapping
+> (rustlane's `foreach` forms are 1-D/2-D, not ISPC's 4-D tile), not from
+> codegen alone, and `volume` is a ~13% loss to the cost of memory-safe
+> gathers.
 
 ## Feature matrix
 

@@ -218,8 +218,8 @@ NOTICE** for these data files.
 
 ### `sponza.bvh` / `sponza.camera` — provenance uncertainty
 
-This is the one item with a genuine provenance gap, stated here honestly rather
-than overclaimed:
+This is the one item with a provenance gap, stated here rather than
+overclaimed:
 
 - The `.bvh` is a preprocessed bounding-volume hierarchy, not a source model.
   Parsing it gives ~121,149 BVH nodes and ~37,380 triangles. That triangle
@@ -242,8 +242,8 @@ Chosen disposition: this project **keeps the files and attributes them** as
 above. `sponza.camera` is a pure numeric matrix with no copyright concern. The
 practical risk is low — the original model was freely donated, and the BVH is
 geometry only (no textures or materials) — but because ISPC documents no terms,
-explicit attribution to Marko Dabrovic (original model) and Intel/ISPC (the BVH
-as redistributed) is the honest posture. A cleaner alternative for downstream
+this project attributes explicitly to Marko Dabrovic (original model) and
+Intel/ISPC (the BVH as redistributed). A cleaner alternative for downstream
 redistributors who wish to avoid shipping undocumented third-party geometry is
 to drop `sponza.bvh` from their tree and fetch it on demand from the ISPC
 `examples/cpu/rt/` directory, since it is only a benchmark input.
