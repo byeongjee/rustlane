@@ -3,13 +3,12 @@
 use rustlane::export;
 use std::time::Instant;
 
-
 #[derive(Clone, Copy)]
 struct BvhNode {
     bmin: [f32; 3],
     bmax: [f32; 3],
-    offset: u32,       
-    n_primitives: u8,  
+    offset: u32,
+    n_primitives: u8,
     split_axis: u8,
 }
 
@@ -18,7 +17,6 @@ struct Triangle {
     p: [[f32; 3]; 3],
     id: i32,
 }
-
 
 mod scene {
     use super::{BvhNode, Triangle};
@@ -320,7 +318,6 @@ mod scene {
     }
 }
 
-
 #[export]
 fn raytrace(
     width: i32,
@@ -347,7 +344,6 @@ fn raytrace(
     });
 }
 
-
 const SCENE_BASE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../ispc-bench/sponza");
 const REF_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../ispc-ref/ref-out/rt.bin");
 
@@ -365,8 +361,8 @@ fn load_camera() -> (i32, i32, [f32; 16], [f32; 16]) {
     let b = std::fs::read(format!("{SCENE_BASE}.camera")).expect("read camera");
     let base_width = rd_i32(&b, 0);
     let base_height = rd_i32(&b, 4);
-    let mut c2w = [0f32; 16]; 
-    let mut r2c = [0f32; 16]; 
+    let mut c2w = [0f32; 16];
+    let mut r2c = [0f32; 16];
     for i in 0..16 {
         c2w[i] = rd_f32(&b, 8 + i * 4);
     }
@@ -412,7 +408,7 @@ fn load_bvh() -> (Vec<BvhNode>, Vec<Triangle>) {
 fn main() {
     let (base_width, base_height, r2c, c2w) = load_camera();
     let (nodes, tris) = load_bvh();
-    let width = base_width; 
+    let width = base_width;
     let height = base_height;
     let npix = (width * height) as usize;
     println!(

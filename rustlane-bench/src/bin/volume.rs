@@ -5,7 +5,6 @@ use rustlane::{export, kernel};
 use std::simd::Mask;
 use std::time::Instant;
 
-
 #[kernel]
 fn inside(px: Varying<f32>, py: Varying<f32>, pz: Varying<f32>) -> Mask<i32, N> {
     px >= 0.3 && px <= 1.8 && py >= -0.2 && py <= 2.3 && pz >= 0.3 && pz <= 1.8
@@ -158,7 +157,7 @@ fn transmittance(
         unmasked! {
             dens = density_at(posx, posy, posz, density, nx, ny, nz);
         }
-        tau += 0.2 * sigma_t * dens; 
+        tau += 0.2 * sigma_t * dens;
         unmasked! {
             posx += step_x;
             posy += step_y;
@@ -218,7 +217,7 @@ fn raymarch(
         }
         let li = 40.0 / distance_sq(-1.0, 4.0, 1.5, posx, posy, posz)
             * transmittance(-1.0, 4.0, 1.5, posx, posy, posz, 20.0, density, nx, ny, nz);
-        rad += 0.025 * atten * dens * 10.0 * (li + 0.25); 
+        rad += 0.025 * atten * dens * 10.0 * (li + 0.25);
         unmasked! {
             tau += 0.025 * 20.0 * dens;
             posx += step_x;
@@ -280,7 +279,6 @@ fn volume_render(
         image[col + rowoff] = raymarch(ox, oy, oz, dirx, diry, dirz, density, nx, ny, nz);
     });
 }
-
 
 const CAMERA_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../ispc-bench/camera.dat");
 const VOLUME_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../ispc-bench/density_lowres.vol");

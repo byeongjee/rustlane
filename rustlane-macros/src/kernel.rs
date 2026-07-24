@@ -1,4 +1,3 @@
-
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::visit_mut::VisitMut;
@@ -8,7 +7,6 @@ use syn::{
 };
 
 use crate::rewrite::{self, RetMode};
-
 
 pub fn expand(attr: TokenStream, item: TokenStream) -> TokenStream {
     if !attr.is_empty() {
@@ -110,7 +108,6 @@ fn expand_impl(imp: ItemImpl) -> TokenStream {
     }
 }
 
-
 pub(crate) fn kernel_body(stmts: &[Stmt]) -> TokenStream {
     quote! {
         {
@@ -153,7 +150,7 @@ pub(crate) fn transform_sig(sig: &mut Signature, errors: &mut Vec<Error>, allow_
             GenericParam::Lifetime(_) => {}
             other => errors.push(Error::new_spanned(
                 other,
-                "#[kernel] fns cannot declare their own type/const generics in v1 (the macro \
+                "#[kernel] fns cannot declare their own type/const generics (the macro \
                  owns `const N: usize` and the exec parameter)",
             )),
         }
@@ -216,7 +213,6 @@ pub(crate) fn ret_mode_of(output: &ReturnType) -> RetMode {
 pub(crate) fn combine_errors(errors: Vec<Error>) -> TokenStream {
     errors.into_iter().map(|e| e.to_compile_error()).collect()
 }
-
 
 struct VaryingWiden;
 

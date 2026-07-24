@@ -1,9 +1,18 @@
+//! Condition traits: the rewrite targets for comparison and logical
+//! operators inside kernels.
+//!
+//! Rust comparison operators must return `bool`, so `#[kernel]` rewrites
+//! `< > <= >= == !=` into these trait calls. The associated `Cond` type
+//! carries uniformity: `bool` for uniform comparisons, `Mask<i32, N>` (the
+//! canonical condition currency) for varying ones. `&&`/`||` become the lazy
+//! [`SpmdAnd`]/[`SpmdOr`] forms, which preserve short-circuiting when the
+//! left-hand side is uniform and degrade to mask AND/OR when varying.
 
 use crate::varying::Varying;
 use core::simd::cmp::{SimdPartialEq, SimdPartialOrd};
 use core::simd::{LaneCount, Mask, Simd, SimdElement, SupportedLaneCount};
 
-
+/// Rewrite target for `< > <= >=`.
 #[diagnostic::on_unimplemented(
     message = "`{Self}` cannot be order-compared with `{Rhs}` in an rustlane kernel",
     label = "no rustlane ordering between these types",
@@ -11,6 +20,7 @@ use core::simd::{LaneCount, Mask, Simd, SimdElement, SupportedLaneCount};
             `Varying<T, N>` and its scalar `T` (-> `Mask<i32, N>`)"
 )]
 pub trait SpmdOrd<Rhs = Self> {
+    /// `bool` (uniform) or `Mask<i32, N>` (varying).
     type Cond;
     fn spmd_lt(self, rhs: Rhs) -> Self::Cond;
     fn spmd_le(self, rhs: Rhs) -> Self::Cond;
@@ -18,6 +28,7 @@ pub trait SpmdOrd<Rhs = Self> {
     fn spmd_ge(self, rhs: Rhs) -> Self::Cond;
 }
 
+/// Rewrite target for `==` and `!=`.
 #[diagnostic::on_unimplemented(
     message = "`{Self}` cannot be equality-compared with `{Rhs}` in an rustlane kernel",
     label = "no rustlane equality between these types",
@@ -25,6 +36,7 @@ pub trait SpmdOrd<Rhs = Self> {
             `Varying<T, N>` and its scalar `T` (-> `Mask<i32, N>`)"
 )]
 pub trait SpmdEq<Rhs = Self> {
+    /// `bool` (uniform) or `Mask<i32, N>` (varying).
     type Cond;
     fn spmd_eq(self, rhs: Rhs) -> Self::Cond;
     fn spmd_ne(self, rhs: Rhs) -> Self::Cond;
@@ -187,7 +199,10 @@ where
     }
 }
 
-
+/// Rewrite target for `&&`: `a && b` becomes `a.spmd_and(|| b)`.
+/// Uniform lhs short-circuits for real; varying lhs evaluates the rhs and
+/// ANDs masks (ISPC semantics — kernel expressions are effect-free by the
+/// supported-subset rules, so unconditional rhs evaluation is sound).
 #[diagnostic::on_unimplemented(
     message = "`{Self}` cannot appear on the left of `&&` in an rustlane kernel",
     label = "expected `bool` or `Mask<i32, N>`"
@@ -197,6 +212,7 @@ pub trait SpmdAnd<Rhs = Self> {
     fn spmd_and(self, rhs: impl FnOnce() -> Rhs) -> Self::Out;
 }
 
+/// Rewrite target for `||`: `a || b` becomes `a.spmd_or(|| b)`.
 #[diagnostic::on_unimplemented(
     message = "`{Self}` cannot appear on the left of `||` in an rustlane kernel",
     label = "expected `bool` or `Mask<i32, N>`"
@@ -206,6 +222,7 @@ pub trait SpmdOr<Rhs = Self> {
     fn spmd_or(self, rhs: impl FnOnce() -> Rhs) -> Self::Out;
 }
 
+/// Rewrite target for unary `!` on conditions.
 #[diagnostic::on_unimplemented(
     message = "`!` cannot be applied to `{Self}` in an rustlane kernel condition",
     label = "expected `bool` or `Mask<i32, N>`"
@@ -332,7 +349,6 @@ where
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -377,14 +393,14 @@ mod tests {
             evaluated = true;
             true
         });
-        assert!(!r && !evaluated); 
+        assert!(!r && !evaluated);
 
         let mut evaluated = false;
         let r = true.spmd_or(|| {
             evaluated = true;
             false
         });
-        assert!(r && !evaluated); 
+        assert!(r && !evaluated);
 
         assert!(true.spmd_and(|| true));
         assert!(!false.spmd_or(|| false));

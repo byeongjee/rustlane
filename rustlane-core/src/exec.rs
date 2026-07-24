@@ -1,19 +1,39 @@
+//! Execution-context types and loop machinery threaded through kernels by
+//! `#[rustlane::kernel]`.
+//!
+//! Trait resolution picks uniform vs. varying semantics based on the context
+//! TYPE:
+//!
+//! | type              | context                                   | cost |
+//! |-------------------|-------------------------------------------|------|
+//! | [`AllOn`]         | kernel entry / outside varying flow       | ZST  |
+//! | [`BoolGuard`]     | inside a uniform (`bool`) branch          | one bool, becomes a real branch |
+//! | [`VMask<N>`]      | inside varying control flow               | mask register |
+//! | [`VMaskGuard<N>`] | uniform branch nested in varying flow     | mask + bool (real branch, mask kept) |
 
 use core::simd::cmp::SimdPartialOrd;
 use core::simd::{LaneCount, Mask, Simd, SupportedLaneCount};
 
-
+/// Full-mask execution context: kernel entry and unmasked blocks. ZST.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub struct AllOn;
 
+/// Result of narrowing [`AllOn`] by a uniform (`bool`) condition.
+/// `should_branch()` returns the wrapped bool, so branching on it produces a
+/// REAL branch.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct BoolGuard(pub bool);
 
+/// Varying execution context: an active-lane mask.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct VMask<const N: usize>(pub Mask<i32, N>)
 where
     LaneCount<N>: SupportedLaneCount;
 
+/// Result of narrowing a [`VMask`] by a uniform (`bool`) condition:
+/// the varying mask is preserved, and `should_branch()` returns the bool so
+/// the uniform condition still compiles to a real branch (a uniform `if`
+/// inside varying control flow).
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct VMaskGuard<const N: usize>(pub Mask<i32, N>, pub bool)
 where
@@ -23,11 +43,13 @@ impl<const N: usize> VMask<N>
 where
     LaneCount<N>: SupportedLaneCount,
 {
+    /// All lanes active.
     #[inline(always)]
     pub fn full() -> Self {
         VMask(Mask::splat(true))
     }
 
+    /// Mask with the first `k` lanes active (`k >= N` means all lanes).
     #[inline(always)]
     pub fn first(k: usize) -> Self {
         let iota = Simd::<i32, N>::from_array(core::array::from_fn(|i| i as i32));
@@ -35,7 +57,7 @@ where
     }
 }
 
-
+/// Common interface of all execution-context types.
 #[diagnostic::on_unimplemented(
     message = "`{Self}` is not an rustlane execution context",
     label = "expected `AllOn`, `BoolGuard`, `VMask<N>` or `VMaskGuard<N>`",
@@ -43,12 +65,19 @@ where
             they should not be constructed from arbitrary types"
 )]
 pub trait Exec: Copy {
+    /// `true` iff this context type can never carry lane divergence.
+    /// Selects the real-`break`/`continue`/`return` arm at monomorphization.
     const UNIFORM: bool;
 
+    /// Const `true` for [`AllOn`]/[`VMask`] (branch deleted, body unguarded);
+    /// the actual condition for [`BoolGuard`]/[`VMaskGuard`] (real branch).
     fn should_branch(self) -> bool;
 
+    /// Is any lane active? Reserved for loop exit checks and OPT-IN coherent
+    /// ifs — never used around plain varying `if` bodies.
     fn any(self) -> bool;
 
+    /// `Self::UNIFORM` as a foldable method.
     #[inline(always)]
     fn is_statically_uniform(self) -> bool {
         Self::UNIFORM
@@ -109,7 +138,20 @@ where
     }
 }
 
-
+/// Narrows an execution context by an `if` condition. The condition type is
+/// `bool` (uniform) or `Mask<i32, N>` (varying). The output TYPE encodes the
+/// branch kind:
+///
+/// | self          | cond           | out            |
+/// |---------------|----------------|----------------|
+/// | `AllOn`       | `bool`         | `BoolGuard`    |
+/// | `AllOn`       | `Mask<i32, N>` | `VMask<N>`     |
+/// | `BoolGuard`   | `bool`         | `BoolGuard`    |
+/// | `BoolGuard`   | `Mask<i32, N>` | `VMask<N>`     |
+/// | `VMask<N>`    | `Mask<i32, N>` | `VMask<N>`     |
+/// | `VMask<N>`    | `bool`         | `VMaskGuard<N>`|
+/// | `VMaskGuard<N>`| `Mask<i32, N>`| `VMask<N>`     |
+/// | `VMaskGuard<N>`| `bool`        | `VMaskGuard<N>`|
 #[diagnostic::on_unimplemented(
     message = "an rustlane `if`/`while` condition must be `bool` (uniform) or `Mask<i32, N>` (varying), not `{C}`",
     label = "cannot narrow execution context `{Self}` by this condition",
@@ -118,7 +160,9 @@ where
 )]
 pub trait AndCond<C>: Sized {
     type Out: Exec;
+    /// Context inside `if cond { .. }`.
     fn and_cond(self, cond: C) -> Self::Out;
+    /// Context inside the matching `else { .. }`.
     fn and_not_cond(self, cond: C) -> Self::Out;
 }
 
@@ -236,7 +280,19 @@ where
     }
 }
 
-
+/// The rewrite target of every assignment inside a kernel:
+/// `x = v` becomes `x.masked_assign(__exec, v)`.
+///
+/// * Under [`AllOn`]/[`BoolGuard`]: monomorphizes to a plain store.
+/// * Under [`VMask`]/[`VMaskGuard`] on a `Varying` lvalue: a blend
+///   (`Mask::select`; LLVM strength-reduces masked integer increments, e.g.
+///   to `usra` on NEON).
+/// * Under [`VMask`]/[`VMaskGuard`] on a UNIFORM (scalar) lvalue: **no impl —
+///   compile error**. This is the static replacement for ISPC's
+///   "assignment to uniform under varying control flow" loose case.
+///
+/// `V` is the assigned value's type; `V = T` on a `Varying<T, N>` lvalue is
+/// the (legal, free) uniform-to-varying masked assignment.
 #[diagnostic::on_unimplemented(
     message = "cannot assign to a value of type `{Self}` under execution context `{E}`",
     label = "this assignment target cannot be written under the current control-flow mask",
@@ -268,21 +324,28 @@ macro_rules! impl_scalar_masked_assign {
 
 impl_scalar_masked_assign!(f32, f64, i8, i16, i32, i64, isize, u8, u16, u32, u64, usize, bool);
 
-
-
+/// Loop state for a loop that can never carry lane divergence: the single
+/// `alive` bool IS the (rotated) loop condition, so the loop collapses to a
+/// plain scalar loop and `current()` hands the body a ZST context.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct UniformLoop(pub bool);
 
+/// Loop state for a loop with varying exits: the surviving-lane set.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct VaryingLoop<const N: usize>(pub Mask<i32, N>)
 where
     LaneCount<N>: SupportedLaneCount;
 
+/// Loop entry for `while` loops, SEEDED with the first evaluation of the
+/// loop condition. The condition's type picks the loop-state type via the
+/// associated-type projection `<E as EnterLoop<C>>::LoopState` — both `E`
+/// and `C` are always known at the call site, so no inference ambiguity
+/// exists.
 #[diagnostic::on_unimplemented(
     message = "cannot start an rustlane `while` loop from context `{Self}` with a `{C}` condition",
     label = "unsupported loop-condition / context combination",
     note = "a uniform (`bool`) `while` condition inside VARYING control flow is not \
-            supported in v1: rewrite as `loop {{ if !cond {{ break; }} .. }}` or make \
+            supported: rewrite as `loop {{ if !cond {{ break; }} .. }}` or make \
             the condition varying"
 )]
 pub trait EnterLoop<C> {
@@ -350,7 +413,12 @@ where
     }
 }
 
-
+/// Loop entry for `for`/`loop` (condition-less) loops that lexically contain
+/// `break`/`continue`/`return`. The macro supplies its own `N` token, so the
+/// loop state is always `VaryingLoop<N>` and fully determined:
+/// `rustlane::EnterLoopN::<N>::enter_loop_n(__exec)`. When all exits turn out
+/// uniform, the mask is provably all-true and LLVM folds the machinery.
+/// (`for`/`loop` bodies with NO lexical exit get no machinery at all.)
 #[diagnostic::on_unimplemented(
     message = "cannot start an rustlane `for`/`loop` from context `{Self}`",
     label = "not an rustlane execution context"
@@ -402,6 +470,10 @@ where
     }
 }
 
+/// Per-iteration re-narrowing of the loop state by the `while` condition,
+/// emitted at the loop bottom: `__loop = __loop.and_cond(__c);`.
+/// Deliberately NOT implemented for (`VaryingLoop`, `bool`) — see
+/// [`EnterLoop`] for the limitation this enforces.
 #[diagnostic::on_unimplemented(
     message = "rustlane loop state `{Self}` cannot be narrowed by a `{C}` condition",
     label = "loop condition type changed between iterations, or unsupported combination",
@@ -429,17 +501,24 @@ where
     }
 }
 
+/// Common query surface of loop-state types.
 #[diagnostic::on_unimplemented(
     message = "`{Self}` is not an rustlane loop state",
     label = "expected `UniformLoop` or `VaryingLoop<N>`"
 )]
 pub trait SpmdLoop: Copy {
+    /// Execution context handed to the loop body each iteration.
     type IterExec: Exec;
 
+    /// The SINGLE per-iteration exit check: `true` while any
+    /// lane is still in the loop.
     fn any(self) -> bool;
 
+    /// Execution context for the current iteration.
     fn current(self) -> Self::IterExec;
 
+    /// Fresh iteration-local mask for `continue` bookkeeping; re-bound at
+    /// the top of every iteration, so continued lanes rejoin automatically.
     #[inline(always)]
     fn iter_mask(self) -> Self {
         self
@@ -473,11 +552,16 @@ where
     }
 }
 
+/// Mask bookkeeping for `break` (against `__loop`), `continue` (against
+/// `__iter`) and `return` (against `__fn` + every enclosing `__loop`).
+/// Removing zero lanes is a no-op. The uniform-context arms are statically
+/// dead — the statically-uniform check runs first — but must still
+/// typecheck, and are implemented with correct semantics anyway.
 #[diagnostic::on_unimplemented(
     message = "`break`/`continue`/`return` under execution context `{E}` is not supported in this loop",
     label = "varying exit inside a loop whose state is uniform",
     note = "a VARYING `break`/`continue`/`return` inside a `while` loop with a UNIFORM \
-            condition is not supported in v1: use `for`/`loop` form, or make the loop \
+            condition is not supported: use `for`/`loop` form, or make the loop \
             condition varying"
 )]
 pub trait LoopRemove<E> {
@@ -538,11 +622,17 @@ where
     }
 }
 
+/// Re-narrows an execution context against a loop/iteration/function mask.
+/// Emitted after every varying `if` that lexically contains
+/// `break`/`continue`/`return`, so later statements in the same iteration
+/// exclude departed lanes: `let __exec = __exec.refresh(&__loop);`.
+/// The output type may differ from `Self` (e.g. `AllOn` refreshed against a
+/// `VaryingLoop` function mask becomes `VMask`).
 #[diagnostic::on_unimplemented(
     message = "cannot refresh execution context `{Self}` against loop state `{L}`",
     label = "unsupported context/loop combination",
     note = "this usually means a varying `break`/`continue`/`return` sits inside a loop \
-            with a uniform condition, which is not supported in v1"
+            with a uniform condition, which is not supported"
 )]
 pub trait Refresh<L> {
     type Out: Exec;
@@ -609,7 +699,6 @@ where
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -621,7 +710,6 @@ mod tests {
     fn mask(bits: [bool; N]) -> M {
         Mask::from_array(bits)
     }
-
 
     #[test]
     fn and_cond_allon_bool_is_boolguard() {
@@ -638,7 +726,7 @@ mod tests {
         let m = mask([true, false, true, false]);
         let e: VMask<N> = AllOn.and_cond(m);
         assert_eq!(e.0, m);
-        assert!(e.should_branch()); 
+        assert!(e.should_branch());
         let e = AllOn.and_not_cond(m);
         assert_eq!(e.0, !m);
     }
@@ -692,7 +780,6 @@ mod tests {
         assert!(!VMaskGuard::<N>(mask([true; N]), true).is_statically_uniform());
     }
 
-
     #[test]
     fn masked_assign_matrix() {
         let m = mask([true, false, true, false]);
@@ -727,7 +814,6 @@ mod tests {
         assert!(b);
     }
 
-
     #[test]
     fn uniform_while_template() {
         fn kernel(n: i32) -> i32 {
@@ -748,7 +834,7 @@ mod tests {
             acc
         }
         assert_eq!(kernel(5), 0 + 1 + 2 + 3 + 4);
-        assert_eq!(kernel(0), 0); 
+        assert_eq!(kernel(0), 0);
     }
 
     #[test]

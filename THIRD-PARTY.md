@@ -124,7 +124,7 @@ coefficients. Each file carries a header note pointing here.
 | `rustlane-core/src/rng.rs` | ISPC `stdlib/stdlib.ispc` `random`/`frandom`/`seed_rng` and `struct RNGState` from `stdlib/include/core.isph` (LFSR113 / combined-Tausworthe) |
 | `rustlane-bench/src/bin/ao.rs` | `ispc-ref/ao.ispc` (aobench) |
 | `rustlane-bench/src/bin/mandelbrot.rs` | `ispc-ref/mandelbrot.ispc` |
-| `rustlane-bench/src/bin/mandelbrot_export.rs`, `spike_mandelbrot.rs`, `spike_machinery.rs`, `spike_core.rs`, `spike_x86_shim.rs` | Same `mandel` kernel as `mandelbrot.rs` (from `ispc-ref/mandelbrot.ispc`), repeated in codegen-spike / export-gate variants |
+| `rustlane-bench/src/bin/mandelbrot_export.rs` | Same `mandel` kernel as `mandelbrot.rs` (from `ispc-ref/mandelbrot.ispc`), driven through the `#[export]` entry point |
 | `rustlane-bench/src/bin/options.rs` | `ispc-ref/options.ispc` (incl. the CND polynomial) |
 | `rustlane-bench/src/bin/rt.rs` | `ispc-ref/rt.ispc` |
 | `rustlane-bench/src/bin/stencil.rs` | `ispc-ref/stencil.ispc` |

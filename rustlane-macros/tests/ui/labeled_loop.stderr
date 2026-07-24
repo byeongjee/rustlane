@@ -1,11 +1,11 @@
 error: labeled loops are not supported in #[kernel] (masks target the innermost loop only)
-  --> tests/ui/labeled_loop.rs:11:5
-   |
-11 |     'outer: loop {
-   |     ^^^^^^^
+ --> tests/ui/labeled_loop.rs:9:5
+  |
+9 |     'outer: loop {
+  |     ^^^^^^^
 
 error: labeled `break` is not supported in #[kernel] (masks target the innermost loop only)
-  --> tests/ui/labeled_loop.rs:14:19
+  --> tests/ui/labeled_loop.rs:12:19
    |
-14 |             break 'outer;
+12 |             break 'outer;
    |                   ^^^^^^

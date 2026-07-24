@@ -1,5 +1,5 @@
 error: `N` is reserved inside #[kernel]: it names the lane-count const parameter (you may read it, but not bind it)
- --> tests/ui/reserved_ident_n.rs:9:8
+ --> tests/ui/reserved_ident_n.rs:7:8
   |
-9 | fn bad(N: i32) -> Varying<i32> {
+7 | fn bad(N: i32) -> Varying<i32> {
   |        ^

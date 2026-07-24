@@ -67,12 +67,12 @@ The masking-primitive win we hypothesized does not materialize at 8 lanes on
 Zen4: the two builds are within noise on six kernels, and on mandelbrot the
 AVX-512 build is 12% slower (AVX-512 frequency behavior / the wider encodings
 buying nothing for this masked-loop shape). **Takeaway: for rustlane's current
-8-wide v1, `-C target-cpu=x86-64-v3` is the build to ship on x86; `native` adds
-no benefit and can regress.**
+8-wide implementation, `-C target-cpu=x86-64-v3` is the build to ship on x86;
+`native` adds no benefit and can regress.**
 
 ## The wider ISPC gang (16-wide AVX-512)
 
-ISPC can target a 16-wide gang (`avx512skx-i32x16`) that rustlane v1 cannot
+ISPC can target a 16-wide gang (`avx512skx-i32x16`) that rustlane cannot
 match — it is fixed at 8 lanes. Against that wider ISPC target rustlane is a
 geomean **1.26× slower**, which is the expected width gap (partly offset because
 Zen4 double-pumps 512-bit ops, so the wider gang gains only 1.03×–1.48× over

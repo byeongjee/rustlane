@@ -1,4 +1,3 @@
-
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{
@@ -28,7 +27,7 @@ pub fn expand(input: TokenStream) -> TokenStream {
     if !di.generics.params.is_empty() {
         errors.push(Error::new(
             di.generics.span(),
-            "#[derive(SpmdValue)] does not support generic value structs in v1 \
+            "#[derive(SpmdValue)] does not support generic value structs \
              (the varying representation owns `const N: usize`)",
         ));
     }
@@ -247,6 +246,9 @@ fn emit(name: &Ident, vis: &Visibility, fields: &[FieldInfo]) -> TokenStream {
             where
                 ::core::simd::LaneCount<N>: ::core::simd::SupportedLaneCount,
             {
+                /// AoS gather: read one `#name` per lane out of `base` at the
+                /// `Varying<i32, N>` element indices (one strided gather per
+                /// leaf field; inactive/out-of-bounds lanes never addressed).
                 #[inline(always)]
                 pub fn gather<__E: ::rustlane::ActiveMask<N> + ::core::marker::Copy>(
                     base: &[#name],
@@ -258,6 +260,8 @@ fn emit(name: &Ident, vis: &Visibility, fields: &[FieldInfo]) -> TokenStream {
                     }
                 }
 
+                /// Field-wise lane select: `self` where `mask` is set, `other`
+                /// elsewhere (`Mask<i32, N>` condition currency).
                 #[inline(always)]
                 pub fn select(self, __mask: ::core::simd::Mask<i32, N>, __other: Self) -> Self {
                     #vname { #(#select_fields,)* }

@@ -1,4 +1,3 @@
-
 use syn::{Block, Expr, Macro, Stmt};
 
 use crate::rewrite::{CifInput, CondBlockInput};

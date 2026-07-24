@@ -74,7 +74,7 @@ fn if_else_uniform(flag: bool) -> Vf {
     let __exec = AllOn;
     let mut y = Varying::<f32, N>::splat(0.0);
     {
-        let __c = flag; 
+        let __c = flag;
         let __exec1 = __exec.and_cond(__c);
         if __exec1.should_branch() {
             y.masked_assign(__exec1, 1.0f32);
@@ -186,7 +186,7 @@ fn binomial_shape_allon(s: Vf) -> Vf {
 }
 
 fn binomial_shape_masked(s: Vf, active: usize) -> Vf {
-    let __exec = VMask::<N>::first(active); 
+    let __exec = VMask::<N>::first(active);
     let mut v = [Varying::<f32, N>::splat(0.0); STEPS];
     for j in 0..STEPS {
         v.spmd_write(j, __exec, s * (j as f32));
@@ -330,7 +330,7 @@ fn volume_while_break_clamp_gather() {
         let y = cl(vy.to_array()[lane], ny - 1);
         let z = cl(vz.to_array()[lane], 1);
         let d = density[(z * nx * ny + y * nx + x) as usize];
-        let steps = t1.to_array()[lane] as i32; 
+        let steps = t1.to_array()[lane] as i32;
         let tau = d * steps.max(0) as f32;
         let want = (-tau).exp();
         let g = got.to_array()[lane];

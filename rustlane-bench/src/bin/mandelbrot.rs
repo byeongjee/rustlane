@@ -4,7 +4,7 @@ use rustlane::prelude::*;
 use rustlane::{export, kernel};
 use std::time::Instant;
 
-const LANES: usize = NATIVE_LANES; 
+const LANES: usize = NATIVE_LANES;
 
 #[kernel]
 fn mandel(c_re: Varying<f32>, c_im: Varying<f32>, count: i32) -> Varying<i32> {

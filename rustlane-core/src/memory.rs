@@ -1,3 +1,40 @@
+//! Memory access for `#[rustlane::kernel]`: the rewrite targets of `a[i]` /
+//! `a[i] = v`, the contiguity-typed [`LinearIndex`] produced by the
+//! `foreach` lowering, and the AoS field gather that backs the
+//! `SpmdValue` derive.
+//!
+//! Indexing is rewritten like an operator:
+//!
+//! ```text
+//! x = a[i];   ->  x.masked_assign(__exec, a.spmd_read(i, __exec));
+//! a[i] = v;   ->  a.spmd_write(i, __exec, v);
+//! ```
+//!
+//! Dispatch is by the index type ([`SpmdRead`] / [`SpmdWrite`] are generic
+//! over it):
+//!
+//! | index          | read                       | write                     |
+//! |----------------|----------------------------|---------------------------|
+//! | `usize`        | plain scalar load          | plain scalar store        |
+//! | [`LinearIndex`]| contiguous vector load     | contiguous vector store   |
+//! | `Varying<i32>` | masked gather              | masked scatter            |
+//!
+//! **Inactive-lane invariant:** every access is threaded with the
+//! execution context `__exec`, and inactive lanes NEVER touch memory — an
+//! out-of-bounds index on a masked-off lane neither faults nor affects the
+//! result. This holds because the underlying `std::simd` gather/scatter and
+//! masked load/store intrinsics take an `enable` mask; disabled elements are
+//! not addressed.
+//!
+//! **Bounds on ACTIVE lanes:** the safe `spmd_read`/`spmd_write` methods
+//! `debug_assert!` that every active lane is in bounds (a bug surfaces loudly
+//! in debug), and in release they still cannot fault — the safe `std::simd`
+//! entry points bounds-mask internally, so an active out-of-bounds lane is
+//! silently suppressed rather than reading past the slice. Callers that have
+//! already proven their indices in bounds can opt into the
+//! `unsafe fn *_unchecked` variants, which drop the bounds masking for the
+//! release-unchecked path (the active mask is still honoured, so the
+//! inactive-lane invariant is preserved even there).
 
 use crate::exec::{AllOn, BoolGuard, Exec, VMask, VMaskGuard};
 use crate::varying::Varying;
@@ -7,23 +44,38 @@ use core::simd::num::{SimdInt, SimdUint};
 use core::simd::ptr::SimdConstPtr;
 use core::simd::{LaneCount, Mask, Simd, SimdElement, SupportedLaneCount};
 
-
+/// A statically-contiguous index: a uniform `base` plus the implicit iota
+/// `0..N`, so lane `l` refers to element `base + l`. The `foreach` lowering
+/// hands the body one of these (`LinearIndex::<N>::new(__base)`); indexing a
+/// slice with it emits contiguous vector loads/stores instead of a gather —
+/// the type-level replacement for ISPC's `array[base + programIndex]`
+/// pattern-match.
+///
+/// Adding a uniform integer keeps it linear (`base` shifts); any other
+/// arithmetic demotes to `Varying<i32, N>` (the gather path). The demotion
+/// conversions ([`Add<Varying<i32, N>>`], [`From<LinearIndex<N>>`]) are
+/// provided so the macro stays type-blind: it emits `i + e` unchanged and
+/// trait resolution picks "stays linear" vs. "demote".
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct LinearIndex<const N: usize> {
     base: usize,
 }
 
 impl<const N: usize> LinearIndex<N> {
+    /// New linear index with the given uniform base (lanes `base..base+N`).
     #[inline(always)]
     pub fn new(base: usize) -> Self {
         Self { base }
     }
 
+    /// The uniform base (lane 0's element index).
     #[inline(always)]
     pub fn base(self) -> usize {
         self.base
     }
 
+    /// Materialise as `Varying<i32, N>` (`[base, base+1, .., base+N-1]`): the
+    /// demotion to the gather path.
     #[inline(always)]
     pub fn to_varying(self) -> Varying<i32, N>
     where
@@ -86,7 +138,6 @@ where
     }
 }
 
-
 pub trait ActiveMask<const N: usize>
 where
     LaneCount<N>: SupportedLaneCount,
@@ -147,7 +198,10 @@ where
     }
 }
 
-
+/// Rewrite target of `a[i]` in read position: `a.spmd_read(i, __exec)`.
+/// Implemented for `[T]` (so `&[T]`, `Vec<T>`, `[T; K]` all work) across the
+/// three index kinds; the associated `Out` carries whether the result is a
+/// scalar `T` (uniform index) or a `Varying<T, N>`.
 #[diagnostic::on_unimplemented(
     message = "`[{Self}]` cannot be rustlane-indexed by `{Idx}` under context `{E}`",
     label = "unsupported (slice, index, exec) combination",
@@ -156,11 +210,19 @@ where
 )]
 pub trait SpmdRead<Idx, E> {
     type Out;
+    /// Bounds-checked in debug on active lanes; never faults in release
+    /// (out-of-bounds active lanes are suppressed).
     fn spmd_read(&self, idx: Idx, exec: E) -> Self::Out;
 
+    /// Release-unchecked read: skips the bounds masking of [`Self::spmd_read`].
+    ///
+    /// # Safety
+    /// Every ACTIVE lane's effective element index must be in bounds for
+    /// `self`. Inactive lanes are still never accessed.
     unsafe fn spmd_read_unchecked(&self, idx: Idx, exec: E) -> Self::Out;
 }
 
+/// Rewrite target of `a[i]` in write position: `a.spmd_write(i, __exec, v)`.
 #[diagnostic::on_unimplemented(
     message = "`[{Self}]` cannot be rustlane-written at `{Idx}` under context `{E}` with `{V}`",
     label = "unsupported (slice, index, exec, value) combination",
@@ -169,11 +231,17 @@ pub trait SpmdRead<Idx, E> {
             or a `LinearIndex<N>` (contiguous store)"
 )]
 pub trait SpmdWrite<Idx, E, V> {
+    /// Bounds-checked in debug on active lanes; never faults in release.
     fn spmd_write(&mut self, idx: Idx, exec: E, value: V);
 
+    /// Release-unchecked write: skips the bounds masking of
+    /// [`Self::spmd_write`].
+    ///
+    /// # Safety
+    /// Every ACTIVE lane's effective element index must be in bounds for
+    /// `self`. Inactive lanes are still never accessed.
     unsafe fn spmd_write_unchecked(&mut self, idx: Idx, exec: E, value: V);
 }
-
 
 impl<T: Copy, E: Exec> SpmdRead<usize, E> for [T] {
     type Out = T;
@@ -183,6 +251,7 @@ impl<T: Copy, E: Exec> SpmdRead<usize, E> for [T] {
     }
     #[inline(always)]
     unsafe fn spmd_read_unchecked(&self, i: usize, _exec: E) -> T {
+        // SAFETY: caller guarantees `i` in bounds.
         unsafe { *self.get_unchecked(i) }
     }
 }
@@ -196,6 +265,7 @@ macro_rules! impl_scalar_write {
             }
             #[inline(always)]
             unsafe fn spmd_write_unchecked(&mut self, i: usize, _exec: $E, value: T) {
+                // SAFETY: caller guarantees `i` in bounds.
                 unsafe { *self.get_unchecked_mut(i) = value };
             }
         }
@@ -216,6 +286,7 @@ macro_rules! impl_varying_elem_write_masked {
             }
             #[inline(always)]
             unsafe fn spmd_write_unchecked(&mut self, i: usize, exec: $E, value: Varying<T, N>) {
+                // SAFETY: caller guarantees `i` in bounds.
                 let slot = unsafe { self.get_unchecked_mut(i) };
                 crate::exec::MaskedAssign::masked_assign(slot, exec, value);
             }
@@ -236,6 +307,7 @@ macro_rules! impl_varying_elem_write_scalar_rhs {
             }
             #[inline(always)]
             unsafe fn spmd_write_unchecked(&mut self, i: usize, exec: $E, value: T) {
+                // SAFETY: caller guarantees `i` in bounds.
                 let slot = unsafe { self.get_unchecked_mut(i) };
                 crate::exec::MaskedAssign::masked_assign(slot, exec, value);
             }
@@ -243,7 +315,6 @@ macro_rules! impl_varying_elem_write_scalar_rhs {
     )* };
 }
 impl_varying_elem_write_scalar_rhs!(AllOn, BoolGuard, VMask<N>, VMaskGuard<N>);
-
 
 macro_rules! impl_linear_plain {
     ($($E:ty),* $(,)?) => { $(
@@ -260,6 +331,8 @@ macro_rules! impl_linear_plain {
             #[inline(always)]
             unsafe fn spmd_read_unchecked(&self, idx: LinearIndex<N>, _exec: $E) -> Varying<T, N> {
                 let b = idx.base;
+                // SAFETY: caller guarantees `b..b+N` in bounds; from_slice's
+                // length assert is then trivially true and folds away.
                 Varying(Simd::from_slice(unsafe { self.get_unchecked(b..b + N) }))
             }
         }
@@ -281,6 +354,7 @@ macro_rules! impl_linear_plain {
                 value: Varying<T, N>,
             ) {
                 let b = idx.base;
+                // SAFETY: caller guarantees `b..b+N` in bounds.
                 value.0.copy_to_slice(unsafe { self.get_unchecked_mut(b..b + N) });
             }
         }
@@ -315,6 +389,9 @@ macro_rules! impl_linear_masked {
                     let $e = exec;
                     $mask
                 };
+                // SAFETY: caller guarantees active lanes in bounds (which
+                // implies `b <= len` whenever any lane is active; the clamp
+                // covers the all-inactive case).
                 Varying(unsafe {
                     Simd::load_select_unchecked(
                         self.get_unchecked(b..),
@@ -354,6 +431,8 @@ macro_rules! impl_linear_masked {
                     let $e = exec;
                     $mask
                 };
+                // SAFETY: caller guarantees active lanes in bounds; the clamp
+                // covers the all-inactive base-past-end case.
                 value
                     .0
                     .store_select_unchecked(unsafe { self.get_unchecked_mut(b..) }, m.cast::<T::Mask>());
@@ -363,7 +442,6 @@ macro_rules! impl_linear_masked {
 }
 impl_linear_masked!(VMask<N>, |e| e.0);
 impl_linear_masked!(VMaskGuard<N>, |e| e.0 & Mask::splat(e.1));
-
 
 impl<T: SimdElement + Default, const N: usize, E: ActiveMask<N>> SpmdRead<Varying<i32, N>, E>
     for [T]
@@ -382,6 +460,8 @@ where
         );
         if all_active {
             if all_lanes_in_bounds(idx.0, self.len()) {
+                // SAFETY: the scalar check above proves every lane of `idxs`
+                // in bounds for `self`.
                 return Varying(unsafe {
                     Simd::gather_select_unchecked(
                         self,
@@ -394,6 +474,9 @@ where
         } else {
             let sel = active.select(idx.0, Simd::splat(0));
             if all_lanes_in_bounds(sel, self.len()) {
+                // SAFETY: every lane of `sel` (active lanes' real indices,
+                // inactive lanes' 0, with `len > 0` implied) is in bounds;
+                // inactive lanes are disabled by `active` regardless.
                 return Varying(unsafe {
                     Simd::gather_select_unchecked(
                         self,
@@ -410,6 +493,8 @@ where
     unsafe fn spmd_read_unchecked(&self, idx: Varying<i32, N>, exec: E) -> Varying<T, N> {
         let active = exec.active_mask();
         let idxs = idx.cast::<usize>().0;
+        // SAFETY: caller guarantees active lanes in bounds; inactive lanes are
+        // still disabled by `active` so they are never addressed.
         Varying(unsafe {
             Simd::gather_select_unchecked(self, active.cast::<isize>(), idxs, Simd::default())
         })
@@ -432,6 +517,8 @@ where
         );
         if all_active {
             if all_lanes_in_bounds(idx.0, self.len()) {
+                // SAFETY: the scalar check above proves every lane of `idxs`
+                // in bounds for `self`.
                 unsafe {
                     value.0.scatter_select_unchecked(self, Mask::splat(true), idxs);
                 }
@@ -440,6 +527,9 @@ where
         } else {
             let sel = active.select(idx.0, Simd::splat(0));
             if all_lanes_in_bounds(sel, self.len()) {
+                // SAFETY: every lane of `sel` is in bounds; inactive lanes
+                // (remapped to 0) are disabled by `active`, so they still
+                // never touch memory.
                 unsafe {
                     value
                         .0
@@ -454,12 +544,13 @@ where
     unsafe fn spmd_write_unchecked(&mut self, idx: Varying<i32, N>, exec: E, value: Varying<T, N>) {
         let active = exec.active_mask();
         let idxs = idx.cast::<usize>().0;
+        // SAFETY: caller guarantees active lanes in bounds; inactive lanes are
+        // disabled by `active`.
         unsafe {
             value.0.scatter_select_unchecked(self, active.cast::<isize>(), idxs);
         }
     }
 }
-
 
 #[inline(always)]
 fn all_lanes_in_bounds<const N: usize>(idxs: Simd<i32, N>, len: usize) -> bool
@@ -468,7 +559,6 @@ where
 {
     len <= i32::MAX as usize && (idxs.cast::<u32>().reduce_max() as usize) < len
 }
-
 
 #[inline(always)]
 fn iota_usize<const N: usize>() -> Simd<usize, N>
@@ -497,7 +587,20 @@ where
     !(active & oob).any()
 }
 
-
+/// Gathers a field of type `F` at byte offset `field_offset` from an AoS slice
+/// `&[S]`, one element per lane selected by the `Varying<i32, N>` element
+/// indices. This is what the `SpmdValue` derive emits per field when indexing
+/// `&[Struct]` by a varying index (ISPC's AoS-gather behaviour); the whole
+/// struct is read as one strided gather per field.
+///
+/// Inactive and out-of-bounds lanes are never addressed (bounds are masked
+/// internally); active lanes are `debug_assert`ed in bounds.
+///
+/// # Safety
+/// `field_offset` must be the offset of a field of type `F` within `S` such
+/// that, for every element of `base`, `base_ptr + idx*size_of::<S>() +
+/// field_offset` is a properly-aligned, initialised `F`. (The derive supplies
+/// `core::mem::offset_of!(S, field)`, which satisfies this.)
 #[inline]
 pub unsafe fn gather_field<S, F, const N: usize, E>(
     base: &[S],
@@ -526,10 +629,19 @@ where
         .wrapping_add(Simd::splat(field_offset))
         .cast::<F>();
 
+    // SAFETY: enabled pointers are in-bounds elements offset to a valid `F`
+    // field (caller's `field_offset` contract); disabled lanes are not read.
     Varying(unsafe { Simd::gather_select_ptr(field_ptrs, enable, Simd::default()) })
 }
 
-
+/// Per-lane `dst[idx[l]] += values[l]` over the ACTIVE lanes, applied in
+/// ascending lane order so lanes with EQUAL indices all contribute (the
+/// gather→modify→scatter decomposition of `a[i] += v` would lose all but the
+/// last conflicting lane). This is the analog of ISPC's `atomic_add_local`
+/// as used by `ao` (`foreach_tiled` maps several lanes to one pixel).
+///
+/// Inactive lanes never touch memory; active out-of-bounds lanes
+/// `debug_assert!` in debug and are silently suppressed in release.
 #[inline]
 pub fn scatter_add<T, const N: usize, E>(
     dst: &mut [T],
@@ -558,7 +670,6 @@ pub fn scatter_add<T, const N: usize, E>(
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -569,7 +680,6 @@ mod tests {
     fn mask(bits: [bool; N]) -> Mask<i32, N> {
         Mask::from_array(bits)
     }
-
 
     #[test]
     fn usize_plain_read_write() {
@@ -588,7 +698,6 @@ mod tests {
         assert_eq!(b[0], 5);
     }
 
-
     #[test]
     fn linear_contiguous_unmasked() {
         let a: Vec<i32> = (0..8).collect();
@@ -605,11 +714,10 @@ mod tests {
         assert_eq!(r.to_array(), [1, 2, 3, 4]);
     }
 
-
     #[test]
     fn linear_contiguous_masked_tail() {
-        let a: Vec<i32> = (10..16).collect(); 
-        let tail_mask = VMask::<N>::first(2); 
+        let a: Vec<i32> = (10..16).collect();
+        let tail_mask = VMask::<N>::first(2);
         let r = a[..].spmd_read(LinearIndex::<N>::new(4), tail_mask);
         assert_eq!(r.to_array(), [14, 15, 0, 0]);
 
@@ -621,10 +729,9 @@ mod tests {
         assert_eq!(r.to_array(), [14, 15, 0, 0]);
     }
 
-
     #[test]
     fn gather_scatter_unmasked() {
-        let a: Vec<i32> = (10..19).collect(); 
+        let a: Vec<i32> = (10..19).collect();
         let idx = Vi::from_array([3, 0, 5, 1]);
         let r = a[..].spmd_read(idx, AllOn);
         assert_eq!(r.to_array(), [13, 10, 15, 11]);
@@ -633,7 +740,6 @@ mod tests {
         out[..].spmd_write(idx, AllOn, Varying::from_array([-1, -2, -3, -4]));
         assert_eq!(out, [-2, -4, 0, -1, 0, -3, 0, 0, 0]);
     }
-
 
     #[test]
     fn gather_scatter_masked() {
@@ -653,13 +759,13 @@ mod tests {
         let a = [10i32, 11, 12, 13];
         let idx = Vi::from_array([1, 999_999, 2, -5]);
         let m = VMask::<N>(mask([true, false, true, false]));
-        let r = a[..].spmd_read(idx, m); 
+        let r = a[..].spmd_read(idx, m);
         assert_eq!(r.to_array(), [11, 0, 12, 0]);
 
         let mut out = [0i32, 1, 2, 3];
         let widx = Vi::from_array([0, 999_999, 2, -5]);
         out[..].spmd_write(widx, m, Varying::from_array([100, 200, 300, 400]));
-        assert_eq!(out, [100, 1, 300, 3]); 
+        assert_eq!(out, [100, 1, 300, 3]);
 
         #[repr(C)]
         #[derive(Clone, Copy)]
@@ -672,7 +778,6 @@ mod tests {
         let f = unsafe { gather_field::<P, i32, N, _>(&pts, idx, off, m) };
         assert_eq!(f.to_array(), [11, 0, 12, 0]);
     }
-
 
     #[test]
     fn aos_field_gather() {
@@ -712,7 +817,6 @@ mod tests {
         assert_eq!(charge.to_array(), [-1, 1, 0, 2]);
     }
 
-
     #[test]
     fn linear_index_arithmetic() {
         let i = LinearIndex::<N>::new(5);
@@ -734,7 +838,6 @@ mod tests {
         assert_eq!(contiguous.to_array(), gathered.to_array());
         assert_eq!(contiguous.to_array(), [2, 3, 4, 5]);
     }
-
 
     #[test]
     fn unchecked_matches_checked() {
@@ -773,10 +876,9 @@ mod tests {
         assert_eq!(out, [100, 1, 300, 3]);
     }
 
-
     #[test]
     fn gather_scatter_fast_path_boundaries() {
-        let a: Vec<i32> = (100..108).collect(); 
+        let a: Vec<i32> = (100..108).collect();
         let idx = Vi::from_array([0, 7, 3, 7]);
 
         let r = a[..].spmd_read(idx, AllOn);
@@ -812,7 +914,6 @@ mod tests {
         );
         assert_eq!(out, [0, 0, 30, 0, 0, 0, 0, 0]);
     }
-
 
     #[test]
     fn gather_scatter_all_inactive_garbage() {
@@ -852,7 +953,6 @@ mod tests {
         assert_eq!(r.to_array(), [0; N]);
     }
 
-
     #[test]
     fn varying_array_masked_usize_write() {
         type Vf = Varying<f32, N>;
@@ -882,7 +982,6 @@ mod tests {
         let r: Vf = v[..].spmd_read(1usize, m);
         assert_eq!(r.to_array(), [-1.0, 1.0, -1.0, 1.0]);
     }
-
 
     #[test]
     fn scatter_add_handles_lane_conflicts() {

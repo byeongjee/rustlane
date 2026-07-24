@@ -1,4 +1,3 @@
-
 #![feature(portable_simd)]
 
 use rustlane::kernel;
@@ -21,7 +20,6 @@ fn check_i32(
         assert_eq!(got1, want, "{name}: N=1 (x={x})");
     }
 }
-
 
 #[kernel]
 fn k_nested_if(x: Varying<i32>) -> Varying<i32> {
@@ -64,7 +62,6 @@ fn nested_if_else() {
     );
 }
 
-
 #[kernel]
 fn k_while_break(n: Varying<i32>) -> Varying<i32> {
     let mut i = Varying::splat(0);
@@ -103,7 +100,6 @@ fn while_with_break() {
     );
 }
 
-
 #[kernel]
 fn k_for_continue(x: Varying<i32>) -> Varying<i32> {
     let mut acc = Varying::splat(0);
@@ -135,7 +131,6 @@ fn for_with_continue() {
         },
     );
 }
-
 
 #[kernel]
 fn k_while_continue(n: Varying<i32>) -> Varying<i32> {
@@ -174,7 +169,6 @@ fn while_with_continue() {
         ref_while_continue,
     );
 }
-
 
 #[kernel]
 fn k_early_return(x: Varying<i32>) -> Varying<i32> {
@@ -216,7 +210,6 @@ fn early_return() {
     );
 }
 
-
 #[kernel]
 fn k_unmasked(x: Varying<i32>) -> Varying<i32> {
     let mut r = Varying::splat(0);
@@ -241,7 +234,6 @@ fn unmasked_semantics() {
     );
 }
 
-
 #[kernel]
 fn k_scale(a: &[f32], out: &mut [f32]) {
     foreach!(i in 0..a.len() {
@@ -256,7 +248,7 @@ fn k_scale(a: &[f32], out: &mut [f32]) {
 
 #[test]
 fn foreach_with_tail() {
-    let n = 13; 
+    let n = 13;
     let a: Vec<f32> = (0..n).map(|i| i as f32 * 0.7).collect();
     let want: Vec<f32> = a
         .iter()
@@ -272,7 +264,6 @@ fn foreach_with_tail() {
     assert_eq!(out1, want, "foreach N=1");
 }
 
-
 #[kernel]
 fn k_grid(w: usize, a: &[f32], out: &mut [f32]) {
     foreach_2d!(y in 0..3, x in 0..w {
@@ -283,7 +274,7 @@ fn k_grid(w: usize, a: &[f32], out: &mut [f32]) {
 
 #[test]
 fn foreach_2d_with_tail() {
-    let (h, w) = (3usize, 13usize); 
+    let (h, w) = (3usize, 13usize);
     let a: Vec<f32> = (0..h * w).map(|i| i as f32 * 0.3).collect();
     let want: Vec<f32> = (0..h * w)
         .map(|i| a[i] * 2.0 + (i / w) as f32)
@@ -298,7 +289,6 @@ fn foreach_2d_with_tail() {
     assert_eq!(out1, want, "foreach_2d N=1");
 }
 
-
 #[kernel]
 fn k_tiled(w: i32, counts: &mut [i32], vals: &mut [i32]) {
     foreach_tiled!(y in 0..5, x in 0..13 {
@@ -310,7 +300,7 @@ fn k_tiled(w: i32, counts: &mut [i32], vals: &mut [i32]) {
 
 #[test]
 fn foreach_tiled_covers_each_cell_once() {
-    let (h, w) = (5usize, 13usize); 
+    let (h, w) = (5usize, 13usize);
     let want_vals: Vec<i32> = (0..h * w)
         .map(|i| (i / w) as i32 * 100 + (i % w) as i32)
         .collect();
@@ -327,7 +317,6 @@ fn foreach_tiled_covers_each_cell_once() {
     assert_eq!(counts1, vec![1i32; h * w], "foreach_tiled N=1: visit counts");
     assert_eq!(vals1, want_vals, "foreach_tiled N=1: coordinates");
 }
-
 
 #[kernel]
 fn k_cwhile(n: Varying<i32>) -> Varying<i32> {
@@ -359,7 +348,6 @@ fn coherent_while() {
     );
 }
 
-
 #[kernel]
 fn k_gather_scatter(tbl: &[i32], idx: Varying<i32>, out: &mut [i32]) {
     let v = tbl[idx];
@@ -388,7 +376,6 @@ fn gather_scatter() {
     assert_eq!(out1, want, "gather/scatter N=1");
 }
 
-
 #[kernel]
 fn k_masked_scatter(sel: Varying<i32>, idx: Varying<i32>, out: &mut [i32]) {
     if sel > 0 {
@@ -409,7 +396,6 @@ fn masked_scatter_inactive_lanes() {
     );
     assert_eq!(out, [1, 0, 1, 0, 1, 0, 1, 0]);
 }
-
 
 #[kernel]
 fn k_cif(x: Varying<i32>) -> Varying<i32> {
@@ -433,7 +419,6 @@ fn coherent_if() {
     );
 }
 
-
 #[kernel]
 fn k_loop(n: Varying<i32>) -> Varying<i32> {
     let mut c = Varying::splat(0);
@@ -456,7 +441,6 @@ fn bare_loop_varying_break() {
         |n| n.max(1),
     );
 }
-
 
 #[kernel]
 fn k_logic(x: Varying<i32>, lo: i32) -> Varying<i32> {
@@ -518,7 +502,6 @@ fn casts() {
     }
 }
 
-
 #[kernel]
 fn k_uniform_if(x: Varying<i32>, flag: i32) -> Varying<i32> {
     let mut r = Varying::splat(0);
@@ -554,7 +537,6 @@ fn uniform_and_nested_uniform_if() {
     }
 }
 
-
 #[kernel]
 fn k_double(x: Varying<i32>) -> Varying<i32> {
     x * 2
@@ -580,7 +562,6 @@ fn kernel_calls() {
     );
 }
 
-
 struct Ops;
 
 #[kernel]
@@ -604,7 +585,6 @@ fn impl_block_kernel() {
         |x| if x > 0 { x + 100 } else { x },
     );
 }
-
 
 #[kernel]
 fn k_local_array(x: Varying<f32>) -> Varying<f32> {

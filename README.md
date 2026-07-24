@@ -1,20 +1,17 @@
 # rustlane
 
-**rustlane brings ISPC's SPMD-on-SIMD programming model to Rust as a pure
+**rustlane brings an ISPC-style SPMD programming model to Rust as a pure
 library** — you write natural scalar-looking control flow (`if`, `while`,
 `for`, `break`, early `return`) over *varying* values, and proc macros lower it
 to masked SIMD over nightly `std::simd`. No compiler fork, no external
 toolchain: just `#[kernel]`, `#[export]`, and `foreach!`.
 
-> The name ISPC (Intel SPMD Program Compiler) is used here only to describe the
-> programming model rustlane adopts. rustlane is an independent project, not
-> affiliated with, endorsed by, or derived from Intel.
+> rustlane is an independent project, not affiliated with Intel.
 
 ## Status
 
 **Experimental. Nightly-only. The API is unstable and will change without
-notice.** This is a v1 research implementation; it is not yet published to
-crates.io. Do not depend on it for production work.
+notice.**
 
 ## What a kernel looks like
 
@@ -79,7 +76,7 @@ the auto-vectorized one. (For stencil the compiler's auto-vectorizer alone is
 | rt | 306.5 ms | 306.7 ms | 102.9 ms | 91.7 ms | **50.4 ms** | **0.55** |
 
 > Honest caveat: `ao` and `rt` gain partly from a legitimately different
-> lane-to-work mapping (rustlane's v1 `foreach` forms are 1-D/2-D, not ISPC's
+> lane-to-work mapping (rustlane's `foreach` forms are 1-D/2-D, not ISPC's
 > 4-D tile), not from codegen alone, and `volume` is a genuine ~13% loss to the
 > cost of memory-safe gathers — see [PERFORMANCE.md](PERFORMANCE.md) for full
 > methodology, environment, and correctness validation.
@@ -163,9 +160,7 @@ Rust function.
 
 ## Feature matrix
 
-Source of truth: [`rustlane-core/LOWERING.md`](rustlane-core/LOWERING.md) §14.
-
-| Supported in v1 | v1 limitations |
+| Supported | Limitations |
 |---|---|
 | `if` / `else` with divergent (varying) conditions | No `match` on varying values (rewrite as `if`/`else` chains) |
 | `while` / `for` / bare `loop`, with `break` / `continue` / early `return` under divergence | Structs vectorize to `VaryingS<N>` (a generated SoA type), **not** `Varying<S>` |
@@ -204,7 +199,7 @@ Two safety properties hold by construction:
   the active mask as its hardware enable, so an out-of-bounds index on a
   masked-off lane neither faults nor affects results.
 - **48-case compile-fail diagnostics suite.** The static rejection rules for
-  `#[kernel]` and `#[export]` (LOWERING.md §14.7) are pinned by 48 checked-in
+  `#[kernel]` and `#[export]` are pinned by 48 checked-in
   `trybuild` snapshots — each asserts the error span points at the offending
   user token — plus an additional case covering the `SpmdValue` derive.
 
@@ -224,9 +219,7 @@ exit check, not a per-`if` tax. The whole kernel tree is `#[inline(always)]`, so
 `#[export]` can stamp it out once per SIMD target inside a `#[target_feature]`
 shim and pick the widest at runtime with a single cached indirect call.
 
-See [`rustlane-core/LOWERING.md`](rustlane-core/LOWERING.md) for the full
-lowering contract and [PERFORMANCE.md](PERFORMANCE.md) for measured results and
-methodology.
+See [PERFORMANCE.md](PERFORMANCE.md) for measured results and methodology.
 
 ## License
 

@@ -1,5 +1,5 @@
-error: `unsafe` blocks are not supported in #[kernel] v1 (unchecked memory access will arrive with a dedicated opt-in)
-  --> tests/ui/unsafe_block.rs:10:13
-   |
-10 |     let y = unsafe { x };
-   |             ^^^^^^^^^^^^
+error: `unsafe` blocks are not supported in #[kernel] (unchecked memory access will arrive with a dedicated opt-in)
+ --> tests/ui/unsafe_block.rs:8:13
+  |
+8 |     let y = unsafe { x };
+  |             ^^^^^^^^^^^^

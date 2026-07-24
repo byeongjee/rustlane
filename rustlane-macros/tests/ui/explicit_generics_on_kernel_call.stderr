@@ -1,5 +1,5 @@
 error: explicit generic arguments on kernel calls are not supported; the macro supplies `::<N, _>` itself
-  --> tests/ui/explicit_generics_on_kernel_call.rs:15:11
+  --> tests/ui/explicit_generics_on_kernel_call.rs:13:11
    |
-15 |     double::<8>(x)
+13 |     double::<8>(x)
    |           ^^^^^

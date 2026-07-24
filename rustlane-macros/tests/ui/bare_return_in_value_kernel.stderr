@@ -1,5 +1,5 @@
 error: this kernel must return a value
-  --> tests/ui/bare_return_in_value_kernel.rs:10:9
-   |
-10 |         return;
-   |         ^^^^^^
+ --> tests/ui/bare_return_in_value_kernel.rs:9:9
+  |
+9 |         return;
+  |         ^^^^^^

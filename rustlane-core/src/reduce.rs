@@ -1,13 +1,26 @@
+//! Cross-lane operations: horizontal reductions, mask predicates,
+//! and lane-shuffle primitives on [`Varying`] values.
+//!
+//! Reductions delegate to `std::simd`'s hardware reductions; the cross-lane
+//! shuffles (`broadcast`/`rotate`/`shift`/`extract`/`insert`/
+//! `exclusive_scan_add`) and the `packed_store_active`/`packed_load_active`
+//! compaction pair round out the ISPC cross-lane surface the benchmarks need.
+//! Everything here is width-generic over `N`.
 
 use crate::varying::Varying;
 use core::ops::{Add, Sub};
 use core::simd::num::{SimdFloat, SimdInt, SimdUint};
 use core::simd::{LaneCount, Mask, Simd, SimdElement, SupportedLaneCount};
 
-
+/// Element types that support horizontal reductions. `*_IDENT` is the
+/// identity element for the corresponding reduction, used to fill inactive
+/// lanes in the masked variants.
 pub trait ReduceElem: SimdElement {
+    /// Additive identity (`0`).
     const ADD_IDENT: Self;
+    /// Identity for `min` (the type's maximum, so inactive lanes never win).
     const MIN_IDENT: Self;
+    /// Identity for `max` (the type's minimum).
     const MAX_IDENT: Self;
 
     fn vreduce_add<const N: usize>(v: Simd<Self, N>) -> Self
@@ -63,7 +76,7 @@ impl_reduce_float!(SimdFloat: f32, f64);
 impl_reduce_int!(SimdInt: i8, i16, i32, i64, isize);
 impl_reduce_int!(SimdUint: u8, u16, u32, u64, usize);
 
-
+/// Sum of all lanes.
 #[inline(always)]
 pub fn reduce_add<T: ReduceElem, const N: usize>(v: Varying<T, N>) -> T
 where
@@ -72,6 +85,7 @@ where
     T::vreduce_add(v.0)
 }
 
+/// Minimum over all lanes.
 #[inline(always)]
 pub fn reduce_min<T: ReduceElem, const N: usize>(v: Varying<T, N>) -> T
 where
@@ -80,6 +94,7 @@ where
     T::vreduce_min(v.0)
 }
 
+/// Maximum over all lanes.
 #[inline(always)]
 pub fn reduce_max<T: ReduceElem, const N: usize>(v: Varying<T, N>) -> T
 where
@@ -88,6 +103,7 @@ where
     T::vreduce_max(v.0)
 }
 
+/// Sum over the active lanes of `mask`; inactive lanes contribute `0`.
 #[inline(always)]
 pub fn reduce_add_masked<T: ReduceElem, const N: usize>(v: Varying<T, N>, mask: Mask<i32, N>) -> T
 where
@@ -97,6 +113,8 @@ where
     T::vreduce_add(sel)
 }
 
+/// Minimum over the active lanes of `mask`; inactive lanes contribute `+∞`
+/// (the type maximum), so they never affect the result.
 #[inline(always)]
 pub fn reduce_min_masked<T: ReduceElem, const N: usize>(v: Varying<T, N>, mask: Mask<i32, N>) -> T
 where
@@ -106,6 +124,8 @@ where
     T::vreduce_min(sel)
 }
 
+/// Maximum over the active lanes of `mask`; inactive lanes contribute `-∞`
+/// (the type minimum).
 #[inline(always)]
 pub fn reduce_max_masked<T: ReduceElem, const N: usize>(v: Varying<T, N>, mask: Mask<i32, N>) -> T
 where
@@ -115,7 +135,7 @@ where
     T::vreduce_max(sel)
 }
 
-
+/// `true` if any lane of the mask is set.
 #[inline(always)]
 pub fn any<const N: usize>(mask: Mask<i32, N>) -> bool
 where
@@ -124,6 +144,7 @@ where
     mask.any()
 }
 
+/// `true` if every lane of the mask is set.
 #[inline(always)]
 pub fn all<const N: usize>(mask: Mask<i32, N>) -> bool
 where
@@ -132,6 +153,7 @@ where
     mask.all()
 }
 
+/// `true` if no lane of the mask is set.
 #[inline(always)]
 pub fn none<const N: usize>(mask: Mask<i32, N>) -> bool
 where
@@ -140,7 +162,7 @@ where
     !mask.any()
 }
 
-
+/// The lane-index vector `[0, 1, .., N-1]` (ISPC `programIndex`).
 #[inline(always)]
 pub fn lanes_iota<const N: usize>() -> Varying<i32, N>
 where
@@ -149,6 +171,7 @@ where
     Varying(Simd::from_array(core::array::from_fn(|i| i as i32)))
 }
 
+/// Broadcast lane `lane`'s value to every lane.
 #[inline(always)]
 pub fn broadcast<T: SimdElement, const N: usize>(v: Varying<T, N>, lane: usize) -> Varying<T, N>
 where
@@ -157,6 +180,7 @@ where
     Varying::splat(v.to_array()[lane])
 }
 
+/// Extract lane `lane`'s value.
 #[inline(always)]
 pub fn extract<T: SimdElement, const N: usize>(v: Varying<T, N>, lane: usize) -> T
 where
@@ -165,6 +189,7 @@ where
     v.to_array()[lane]
 }
 
+/// Return `v` with lane `lane` replaced by `value`.
 #[inline(always)]
 pub fn insert<T: SimdElement, const N: usize>(
     v: Varying<T, N>,
@@ -179,6 +204,7 @@ where
     Varying::from_array(a)
 }
 
+/// Cyclic rotate: `out[i] = v[(i + k) mod N]` (`k` may be negative).
 #[inline(always)]
 pub fn rotate<T: SimdElement, const N: usize>(v: Varying<T, N>, k: i32) -> Varying<T, N>
 where
@@ -192,6 +218,9 @@ where
     }))
 }
 
+/// Zero-filling shift: `out[i] = v[i + k]` when `i + k` is in range, else the
+/// element default (`0`). A positive `k` pulls higher-index lanes down toward
+/// lane 0 and fills the top with zeros (ISPC `shift` semantics).
 #[inline(always)]
 pub fn shift<T: SimdElement + Default, const N: usize>(v: Varying<T, N>, k: i32) -> Varying<T, N>
 where
@@ -209,6 +238,9 @@ where
     }))
 }
 
+/// Exclusive prefix sum: `out[i] = v[0] + .. + v[i-1]` (`out[0] = 0`).
+/// Implemented as a Hillis-Steele inclusive scan (`log2(N)` vector adds,
+/// each a lane-shift shuffle + add) followed by subtracting the original.
 #[inline(always)]
 pub fn exclusive_scan_add<T, const N: usize>(v: Varying<T, N>) -> Varying<T, N>
 where
@@ -229,7 +261,14 @@ where
     Varying(x - orig)
 }
 
-
+/// Store the active lanes of `values` contiguously into `dst[0..count]` (in
+/// ascending lane order) and return `count`, the number of active lanes.
+///
+/// Branch-light: the value is written unconditionally to `dst[count]` and
+/// `count` only advances on active lanes (an inactive-lane write is later
+/// overwritten by the next active lane, or left as trailing scratch beyond
+/// the returned `count`). NEON has no hardware compress, so this scalar loop
+/// is the fallback. `dst` must have room for at least `N` elements.
 #[inline]
 pub fn packed_store_active<T: SimdElement, const N: usize>(
     mask: Mask<i32, N>,
@@ -252,6 +291,10 @@ where
     count
 }
 
+/// Inverse of [`packed_store_active`]: read `count` contiguous values from
+/// `src` into the active lanes of `out` (ascending lane order), leaving
+/// inactive lanes untouched. Returns `count`, the number of active lanes.
+/// `src` must hold at least that many elements.
 #[inline]
 pub fn packed_load_active<T: SimdElement, const N: usize>(
     mask: Mask<i32, N>,
@@ -272,7 +315,6 @@ where
     *out = Varying::from_array(a);
     count
 }
-
 
 #[cfg(test)]
 mod tests {

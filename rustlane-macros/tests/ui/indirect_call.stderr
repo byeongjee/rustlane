@@ -1,5 +1,5 @@
 error: indirect calls (through values or closures) are not supported in #[kernel]
- --> tests/ui/indirect_call.rs:9:13
+ --> tests/ui/indirect_call.rs:8:13
   |
-9 |     let r = (foo_table[0])(x);
+8 |     let r = (foo_table[0])(x);
   |             ^^^^^^^^^^^^^^

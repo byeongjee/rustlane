@@ -1,3 +1,8 @@
+//! `Varying<T, N>`: the SPMD varying value type (one value per program
+//! instance / SIMD lane), plus its operator surface and masked-assignment
+//! impls. The `#[kernel]` macro rewrites the surface type `Varying<T>` to
+//! `Varying<T, N>` with its own const `N`; everything here is fully
+//! const-generic so that rewrite is purely syntactic.
 
 use crate::exec::{AllOn, BoolGuard, MaskedAssign, VMask, VMaskGuard};
 use core::ops::{
@@ -7,8 +12,15 @@ use core::ops::{
 };
 use core::simd::{LaneCount, Mask, Simd, SimdCast, SimdElement, SupportedLaneCount};
 
+/// Default lane count for the current build target (8 on aarch64, where
+/// `Simd<f32, 8>` maps to paired, double-pumped NEON q-registers; 8 is also
+/// the x86 baseline choice). Runtime-dispatch shims pick per-target widths
+/// later; this is the width a width-agnostic caller should instantiate.
 pub const NATIVE_LANES: usize = 8;
 
+/// A varying value: `T` per lane, `N` lanes. Thin newtype over
+/// `std::simd::Simd` — the inner vector is `pub` on purpose (the runtime and
+/// hand-expanded kernels reach through it; the macro never does).
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(transparent)]
 pub struct Varying<T, const N: usize>(pub Simd<T, N>)
@@ -20,37 +32,49 @@ impl<T: SimdElement, const N: usize> Varying<T, N>
 where
     LaneCount<N>: SupportedLaneCount,
 {
+    /// Broadcast a uniform value to all lanes.
     #[inline(always)]
     pub fn splat(v: T) -> Self {
         Self(Simd::splat(v))
     }
 
+    /// Per-lane values from an array.
     #[inline(always)]
     pub fn from_array(a: [T; N]) -> Self {
         Self(Simd::from_array(a))
     }
 
+    /// Wrap an existing `std::simd` vector.
     #[inline(always)]
     pub fn from_simd(s: Simd<T, N>) -> Self {
         Self(s)
     }
 
+    /// Per-lane values as an array.
     #[inline(always)]
     pub fn to_array(self) -> [T; N] {
         self.0.to_array()
     }
 
+    /// The lane count `N` (ISPC `programCount`).
     #[inline(always)]
     pub const fn lanes() -> usize {
         N
     }
 
+    /// Lane-wise select: `self` where `mask` is set, `other` elsewhere.
+    /// The canonical condition currency is `Mask<i32, N>`; it is cast to the
+    /// element's native mask width (free for 32-bit elements).
     #[inline(always)]
     pub fn select(self, mask: Mask<i32, N>, other: Self) -> Self {
         Self(mask.cast::<T::Mask>().select(self.0, other.0))
     }
 }
 
+/// Per-element-type cast dispatch. `std::simd` exposes `cast` on the three
+/// category traits (`SimdFloat`/`SimdInt`/`SimdUint`), not on `Simd` itself,
+/// so a generic `Varying::cast` needs this shim. Implemented for exactly the
+/// primitive numeric element types; treat as sealed.
 pub trait SpmdCastElement: SimdElement + SimdCast {
     fn cast_simd<U: SimdCast, const N: usize>(v: Simd<Self, N>) -> Simd<U, N>
     where
@@ -79,6 +103,7 @@ impl<T: SpmdCastElement, const N: usize> Varying<T, N>
 where
     LaneCount<N>: SupportedLaneCount,
 {
+    /// Lane-wise numeric cast (`as`-semantics), via [`SpmdCast`].
     #[inline(always)]
     pub fn cast<U: SimdElement + SimdCast>(self) -> Varying<U, N> {
         Varying(T::cast_simd::<U, N>(self.0))
@@ -94,7 +119,6 @@ where
         Self::splat(T::default())
     }
 }
-
 
 macro_rules! impl_varying_binop {
     ($($op:ident, $fn:ident, $opas:ident, $fnas:ident);* $(;)?) => { $(
@@ -204,7 +228,11 @@ macro_rules! impl_scalar_lhs_ops {
 
 impl_scalar_lhs_ops!(f32, f64, i8, i16, i32, i64, isize, u8, u16, u32, u64, usize);
 
-
+/// Rewrite target for `as` casts: the macro emits
+/// `rustlane::SpmdCast::<U>::spmd_cast(expr)` where `U` is the ELEMENT target
+/// type token from the source (`x as f32`). Uniform inputs produce `U`;
+/// varying inputs produce `Varying<U, N>` — the associated `Out` type
+/// resolves it, so the macro stays type-blind.
 #[diagnostic::on_unimplemented(
     message = "`{Self}` cannot be cast to element type `{Target}` in an rustlane kernel",
     label = "unsupported `as` cast",
@@ -247,7 +275,6 @@ macro_rules! impl_scalar_cast_from {
 }
 
 impl_scalar_cast_from!(f32, f64, i8, i16, i32, i64, isize, u8, u16, u32, u64, usize);
-
 
 impl<T: SimdElement, const N: usize> MaskedAssign<AllOn> for Varying<T, N>
 where
@@ -331,7 +358,6 @@ where
     }
 }
 
-
 impl<const N: usize> MaskedAssign<AllOn> for Mask<i32, N>
 where
     LaneCount<N>: SupportedLaneCount,
@@ -414,7 +440,6 @@ where
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -437,17 +462,17 @@ mod tests {
     fn arithmetic_all_four_combinations() {
         let v = Vf::from_array([1.0, 2.0, 3.0, 4.0]);
         let w = Vf::splat(2.0);
-        assert_eq!((v + w).to_array(), [3.0, 4.0, 5.0, 6.0]); 
-        assert_eq!((v * 2.0).to_array(), [2.0, 4.0, 6.0, 8.0]); 
-        assert_eq!((2.0 * v).to_array(), [2.0, 4.0, 6.0, 8.0]); 
+        assert_eq!((v + w).to_array(), [3.0, 4.0, 5.0, 6.0]);
+        assert_eq!((v * 2.0).to_array(), [2.0, 4.0, 6.0, 8.0]);
+        assert_eq!((2.0 * v).to_array(), [2.0, 4.0, 6.0, 8.0]);
         assert_eq!((10.0 - v).to_array(), [9.0, 8.0, 7.0, 6.0]);
         assert_eq!((v / 2.0).to_array(), [0.5, 1.0, 1.5, 2.0]);
         assert_eq!((-v).to_array(), [-1.0, -2.0, -3.0, -4.0]);
 
         let mut a = v;
-        a += 1.0; 
+        a += 1.0;
         assert_eq!(a.to_array(), [2.0, 3.0, 4.0, 5.0]);
-        a -= Vf::splat(1.0); 
+        a -= Vf::splat(1.0);
         assert_eq!(a.to_array(), v.to_array());
         a *= 3.0;
         a /= Vf::splat(3.0);
@@ -488,7 +513,7 @@ mod tests {
         type M = Mask<i32, N>;
         let exec_m = M::from_array([true, false, true, false]);
 
-        let mut h: M = Default::default(); 
+        let mut h: M = Default::default();
         h.masked_assign(AllOn, true);
         assert_eq!(h.to_array(), [true; N]);
         h.masked_assign(BoolGuard(true), M::from_array([true, true, false, false]));
@@ -510,7 +535,7 @@ mod tests {
     #[test]
     fn casts() {
         let v = Vf::from_array([1.9, -2.9, 3.1, 4.0]);
-        assert_eq!(v.cast::<i32>().to_array(), [1, -2, 3, 4]); 
+        assert_eq!(v.cast::<i32>().to_array(), [1, -2, 3, 4]);
         let w: Varying<f32, N> = SpmdCast::<f32>::spmd_cast(Vi::from_array([1, 2, 3, 4]));
         assert_eq!(w.to_array(), [1.0, 2.0, 3.0, 4.0]);
         let u: i64 = SpmdCast::<i64>::spmd_cast(3.7f32);

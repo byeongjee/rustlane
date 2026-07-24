@@ -1,5 +1,5 @@
 error: this kernel returns no value
-  --> tests/ui/return_value_in_unit_kernel.rs:10:16
-   |
-10 |         return 5;
-   |                ^
+ --> tests/ui/return_value_in_unit_kernel.rs:9:16
+  |
+9 |         return 5;
+  |                ^

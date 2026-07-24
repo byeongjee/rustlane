@@ -1,3 +1,42 @@
+//! Math stdlib for `Varying` values.
+//!
+//! Two tiers:
+//!
+//! * **Thin hardware wrappers** — `sqrt`, `abs`, `min`, `max`, `floor`,
+//!   `ceil`, `round`, `clamp`, `lerp` — forward straight to `std::simd`
+//!   (`StdFloat` / `SimdFloat`), so they lower to single hardware
+//!   instructions. Generic over the float element, so `Varying<f32, N>` and
+//!   `Varying<f64, N>` both work.
+//! * **Reciprocal estimates** — `rsqrt`, `rcp` — use the aarch64 NEON
+//!   estimate + Newton-Raphson refinement instructions (`vrsqrte`/`vrsqrts`,
+//!   `vrecpe`/`vrecps`) under `#[cfg(target_arch = "aarch64")]`, with an
+//!   exact `1/sqrt(x)` / `1/x` fallback elsewhere. f32 only.
+//! * **Transcendentals** — `exp`, `log`, `pow`, `sin`, `cos` — are
+//!   **ported verbatim from ISPC's own stdlib polynomials** so accuracy and
+//!   op-count match ISPC by construction. Source:
+//!   `ispc/ispc` `stdlib/stdlib.ispc` at commit
+//!   `e99a37840cd7d83c84e56e97a03eab6049b59fe7`, the
+//!   `__math_lib == __math_lib_ispc` (default, NOT `_fast`) branches:
+//!     - `exp`  : stdlib.ispc ~L4513-4568   (Cody-Waite reduction + degree-7 poly)
+//!     - `log`  : stdlib.ispc ~L5019-5104   (+ `__range_reduce_log` ~L4762-4788)
+//!     - `sin`  : stdlib.ispc ~L3391-3434
+//!     - `cos`  : stdlib.ispc ~L3623-3668
+//!     - `pow`  : stdlib.ispc ~L5297-5300   (`exp(b * log(a))`)
+//!   Coefficients originate from Solomon Boulos's "syrah"
+//!   (github.com/boulos/syrah) via ISPC, fit with Sollya `fpminimax`.
+//!
+//! License of the ported material: BSD-3-Clause — Copyright (c) Intel
+//! Corporation (ISPC stdlib); the underlying coefficients are Copyright (c)
+//! Solomon Boulos (syrah). See THIRD-PARTY.md.
+//!
+//! **fma / `mul_add`:** ISPC's default math lib fuses its
+//! polynomial multiply-adds (`fmla`/`fmls`). To match its op-count and
+//! accuracy this port uses explicit `mul_add` for every *polynomial*
+//! Horner / Estrin step. The Cody-Waite range-reduction subtractions
+//! (`x - k*ln2_hi - k*ln2_lo`) are kept as separate `mul`/`sub` to preserve
+//! the two-part reduction's exactness — that is not polynomial evaluation.
+//! Because `mul_add` is used consistently for every lane width, all `N`
+//! (including the `N = 1` case) stay bit-identical.
 
 use crate::varying::Varying;
 use core::simd::cmp::{SimdPartialEq, SimdPartialOrd};
@@ -6,6 +45,7 @@ use core::simd::{LaneCount, Simd, SimdElement, SupportedLaneCount};
 use std::simd::StdFloat;
 
 
+/// Lane-wise square root (`fsqrt`).
 #[inline(always)]
 pub fn sqrt<T, const N: usize>(x: Varying<T, N>) -> Varying<T, N>
 where
@@ -16,6 +56,7 @@ where
     Varying(x.0.sqrt())
 }
 
+/// Lane-wise absolute value.
 #[inline(always)]
 pub fn abs<T, const N: usize>(x: Varying<T, N>) -> Varying<T, N>
 where
@@ -26,6 +67,11 @@ where
     Varying(x.0.abs())
 }
 
+/// Element types with lane-wise min/max: floats (`fmin`/`fmax`-style, via
+/// `SimdFloat`) and integers (via `SimdOrd`). `std::simd` splits these across
+/// category traits, so [`min`]/[`max`]/[`clamp`] dispatch through this shim —
+/// ISPC's `min`/`max`/`clamp` are generic over both (volume's `D()` clamps
+/// varying `int` voxel coordinates). Treat as sealed.
 pub trait MinMaxElem: SimdElement {
     fn vmin<const N: usize>(a: Simd<Self, N>, b: Simd<Self, N>) -> Simd<Self, N>
     where
@@ -51,6 +97,8 @@ macro_rules! impl_minmax_elem {
 impl_minmax_elem!(SimdFloat: f32, f64);
 impl_minmax_elem!(core::simd::cmp::SimdOrd: i8, i16, i32, i64, isize, u8, u16, u32, u64, usize);
 
+/// Lane-wise minimum (floats: `fmin`-style, propagates the non-NaN operand;
+/// integers supported too).
 #[inline(always)]
 pub fn min<T, const N: usize>(a: Varying<T, N>, b: Varying<T, N>) -> Varying<T, N>
 where
@@ -60,6 +108,8 @@ where
     Varying(T::vmin(a.0, b.0))
 }
 
+/// Lane-wise maximum (floats: `fmax`-style, propagates the non-NaN operand;
+/// integers supported too).
 #[inline(always)]
 pub fn max<T, const N: usize>(a: Varying<T, N>, b: Varying<T, N>) -> Varying<T, N>
 where
@@ -69,6 +119,7 @@ where
     Varying(T::vmax(a.0, b.0))
 }
 
+/// Lane-wise floor.
 #[inline(always)]
 pub fn floor<T, const N: usize>(x: Varying<T, N>) -> Varying<T, N>
 where
@@ -79,6 +130,7 @@ where
     Varying(x.0.floor())
 }
 
+/// Lane-wise ceiling.
 #[inline(always)]
 pub fn ceil<T, const N: usize>(x: Varying<T, N>) -> Varying<T, N>
 where
@@ -89,6 +141,7 @@ where
     Varying(x.0.ceil())
 }
 
+/// Lane-wise round (half away from zero, matching `f32::round`).
 #[inline(always)]
 pub fn round<T, const N: usize>(x: Varying<T, N>) -> Varying<T, N>
 where
@@ -99,6 +152,8 @@ where
     Varying(x.0.round())
 }
 
+/// Lane-wise clamp of `x` to `[lo, hi]` (ISPC `clamp(v, lo, hi)`; floats and
+/// integers). `min(max(x, lo), hi)` — identical to `simd_clamp`.
 #[inline(always)]
 pub fn clamp<T, const N: usize>(
     x: Varying<T, N>,
@@ -112,6 +167,8 @@ where
     Varying(T::vmin(T::vmax(x.0, lo.0), hi.0))
 }
 
+/// Lane-wise linear interpolation `a + t*(b - a)`, fused as a single
+/// `mul_add` for one rounding.
 #[inline(always)]
 pub fn lerp<T, const N: usize>(a: Varying<T, N>, b: Varying<T, N>, t: Varying<T, N>) -> Varying<T, N>
 where
@@ -122,6 +179,14 @@ where
     Varying((b.0 - a.0).mul_add(t.0, a.0))
 }
 
+/// Lane-wise fused multiply-add `a*b + c` — one rounding, lowers to `fmla`.
+///
+/// Exists for **ISPC-contraction parity**: where ISPC's default
+/// math lib contracts an `a*b + c` into a single `fmla`, rustc never contracts
+/// on its own, so callers that must match ISPC's op-count, emission order, and
+/// rounding at a specific site spell the contraction out with this `fma`
+/// (`StdFloat::mul_add` underneath). f32 only; use it only where the reference
+/// binary is known to fuse.
 #[inline(always)]
 pub fn fma<const N: usize>(
     a: Varying<f32, N>,
@@ -135,6 +200,16 @@ where
 }
 
 
+/// Reciprocal square root `1/sqrt(x)`, f32.
+///
+/// On aarch64 this is the NEON `vrsqrte` seed (≈8 valid mantissa bits)
+/// refined by **two** Newton-Raphson steps via `vrsqrts`
+/// (`y_{n+1} = y_n * (3 - x*y_n^2)/2`). ULP behaviour: NOT correctly rounded;
+/// after two steps the relative error is a few ULP (empirically ≤ ~2 ULP over
+/// the normal-float range — see the `rsqrt_is_within_a_few_ulp` test). Lanes
+/// beyond the last full 4-wide NEON group (only reachable for `N` not a
+/// multiple of 4, i.e. `N < 4`) use the exact `1/sqrt` fallback. Off aarch64
+/// the whole function is the exact `1/sqrt(x)`.
 #[inline(always)]
 pub fn rsqrt<const N: usize>(x: Varying<f32, N>) -> Varying<f32, N>
 where
@@ -143,6 +218,10 @@ where
     Varying(rsqrt_simd(x.0))
 }
 
+/// Reciprocal `1/x`, f32. On aarch64: NEON `vrecpe` seed + two `vrecps`
+/// Newton-Raphson steps (`y_{n+1} = y_n * (2 - x*y_n)`); a few ULP, not
+/// correctly rounded. Fallback / non-aarch64: exact `1/x`. See [`rsqrt`] for
+/// the tail-lane note.
 #[inline(always)]
 pub fn rcp<const N: usize>(x: Varying<f32, N>) -> Varying<f32, N>
 where
@@ -162,6 +241,8 @@ where
     let mut out = [0.0f32; N];
     let mut i = 0;
     while i + 4 <= N {
+        // SAFETY: NEON is baseline on aarch64; `i + 4 <= N` keeps the 4-wide
+        // load/store in bounds of `a`/`out`.
         unsafe {
             let v = vld1q_f32(a.as_ptr().add(i));
             let mut e = vrsqrteq_f32(v);
@@ -198,6 +279,7 @@ where
     let mut out = [0.0f32; N];
     let mut i = 0;
     while i + 4 <= N {
+        // SAFETY: as in `rsqrt_simd`.
         unsafe {
             let v = vld1q_f32(a.as_ptr().add(i));
             let mut e = vrecpeq_f32(v);
@@ -224,6 +306,7 @@ where
 }
 
 
+/// `e^x`, ported from ISPC `exp` (`__math_lib_ispc`).
 #[inline(always)]
 pub fn exp<const N: usize>(x: Varying<f32, N>) -> Varying<f32, N>
 where
@@ -232,6 +315,11 @@ where
     Varying(exp_simd(x.0))
 }
 
+/// Natural log `ln(x)`, ported from ISPC `log` (`__math_lib_ispc`, main
+/// normal-number path). Domain: positive normal floats — negatives, zero,
+/// subnormals, `inf`, `nan` are outside the supported domain of `(0, 1e30]`.
+/// ISPC's scalar "special value" slow path (its `if (any(special))`) is
+/// intentionally omitted; the vectorized main path gives `< 4 ULP`.
 #[inline(always)]
 pub fn log<const N: usize>(x: Varying<f32, N>) -> Varying<f32, N>
 where
@@ -240,6 +328,7 @@ where
     Varying(log_simd(x.0))
 }
 
+/// `a^b`, ported from ISPC `pow`: `exp(b * log(a))`.
 #[inline(always)]
 pub fn pow<const N: usize>(a: Varying<f32, N>, b: Varying<f32, N>) -> Varying<f32, N>
 where
@@ -248,6 +337,7 @@ where
     Varying(exp_simd(b.0 * log_simd(a.0)))
 }
 
+/// `sin(x)`, ported from ISPC `sin` (`__math_lib_ispc`).
 #[inline(always)]
 pub fn sin<const N: usize>(x: Varying<f32, N>) -> Varying<f32, N>
 where
@@ -256,6 +346,7 @@ where
     Varying(sincos_simd(x.0, false))
 }
 
+/// `cos(x)`, ported from ISPC `cos` (`__math_lib_ispc`).
 #[inline(always)]
 pub fn cos<const N: usize>(x: Varying<f32, N>) -> Varying<f32, N>
 where
@@ -313,10 +404,10 @@ where
     LaneCount<N>: SupportedLaneCount,
 {
     const NONEXPONENT_MASK: u32 = 0x807F_FFFF;
-    const EXPONENT_NEG1: u32 = 126 << 23; 
+    const EXPONENT_NEG1: u32 = 126 << 23;
 
-    let int_version = input.to_bits(); 
-    let biased_exponent = (int_version >> Simd::splat(23)).cast::<i32>(); 
+    let int_version = input.to_bits();
+    let biased_exponent = (int_version >> Simd::splat(23)).cast::<i32>();
     let offset_exponent = biased_exponent + Simd::splat(1);
     let exponent = offset_exponent - Simd::splat(127);
     let blended =
@@ -342,7 +433,7 @@ where
     const C09: f32 = -4.0101176130e-03;
     const C10: f32 = -4.4349682330e-01;
 
-    let x_repr = x_full.to_bits(); 
+    let x_repr = x_full.to_bits();
 
     const UNSTABLE_RANGE_SIZE: f32 = 0.285;
     let start_repr: u32 = 1.0f32.to_bits();

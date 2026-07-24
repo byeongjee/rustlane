@@ -1,8 +1,28 @@
+//! Varying RNG — a bit-exact port of ISPC's stdlib pseudo-random generator
+//! (the L'Ecuyer LFSR113 / combined-Tausworthe generator that the `ao`
+//! benchmark's sample distribution depends on).
+//!
+//! Ported verbatim from the ISPC standard library:
+//!   - `random` / `frandom` / `seed_rng`: `stdlib/stdlib.ispc`, lines
+//!     7005-7057 (the `varying RNGState *uniform` overloads).
+//!   - `struct RNGState { unsigned int z1, z2, z3, z4; }`:
+//!     `stdlib/include/core.isph`, lines 395-396.
+//! Source repo: github.com/ispc/ispc, commit
+//! `e99a37840cd7d83c84e56e97a03eab6049b59fe7` (main HEAD 2026-07-23).
+//! License of the ported material: BSD-3-Clause, Copyright (c) Intel
+//! Corporation (ISPC stdlib). See THIRD-PARTY.md.
+//!
+//! Every lane carries an independent `(z1,z2,z3,z4)` state; the arithmetic is
+//! `unsigned int` (u32) throughout, matching ISPC's wrapping shifts and
+//! logical right-shifts exactly, so identical seeds produce identical streams
+//! bit-for-bit against ISPC (and against the `N = 1` scalar instantiation).
 
 use crate::varying::Varying;
 use core::simd::num::SimdFloat;
 use core::simd::{LaneCount, Simd, SupportedLaneCount};
 
+/// Per-lane RNG state — four `u32` Tausworthe components, one set per lane.
+/// Mirrors ISPC's `struct RNGState { unsigned int z1, z2, z3, z4; }`.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct RNGState<const N: usize>
 where
@@ -18,6 +38,7 @@ impl<const N: usize> RNGState<N>
 where
     LaneCount<N>: SupportedLaneCount,
 {
+    /// Construct and seed in one step (`seed_rng` on a fresh state).
     #[inline(always)]
     pub fn new(seeds: Varying<u32, N>) -> Self {
         let mut s = RNGState {
@@ -30,6 +51,7 @@ where
         s
     }
 
+    /// Port of ISPC `seed_rng(varying RNGState *uniform, unsigned int seed)`.
     #[inline(always)]
     pub fn seed_rng(&mut self, seed: Varying<u32, N>) {
         self.z1 = seed;
@@ -41,6 +63,8 @@ where
             | ((seed & 0xff000000_u32) >> 24u32);
     }
 
+    /// Port of ISPC `random(varying RNGState *uniform)`: advances the state
+    /// and returns the combined 32-bit output per lane.
     #[inline(always)]
     pub fn random_u32(&mut self) -> Varying<u32, N> {
         let mut z1 = self.z1;
@@ -64,6 +88,10 @@ where
         z1 ^ z2 ^ z3 ^ z4
     }
 
+    /// Port of ISPC `frandom(varying RNGState *uniform)`: a `f32` in `[0, 1)`.
+    /// Takes the low 23 bits of `random_u32`, injects them into the mantissa
+    /// of `1.0`, and subtracts 1.0 (identical bit layout to ISPC's
+    /// `floatbits(0x3F800000 | irand) - 1.0f`).
     #[inline(always)]
     pub fn frandom(&mut self) -> Varying<f32, N> {
         let irand = self.random_u32() & 0x007fffff_u32;
@@ -72,7 +100,6 @@ where
         Varying(f) - 1.0f32
     }
 }
-
 
 #[cfg(test)]
 mod tests {

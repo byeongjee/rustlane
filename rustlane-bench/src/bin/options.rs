@@ -4,7 +4,6 @@ use rustlane::prelude::*;
 use rustlane::{export, kernel};
 use std::time::Instant;
 
-
 #[kernel]
 fn cnd(x: Varying<f32>) -> Varying<f32> {
     let l = math::abs(x);
@@ -74,7 +73,6 @@ fn binomial_put(
     vv[0]
 }
 
-
 #[export]
 fn bs_entry(
     sa: &[f32],
@@ -116,7 +114,6 @@ fn binomial_entry(
         result[i] = binomial_put(s, x, t, r, v);
     });
 }
-
 
 fn load_ref(path: &str, n: usize) -> Vec<f32> {
     let bytes = std::fs::read(path).unwrap_or_else(|e| panic!("cannot read {path}: {e}"));
@@ -166,7 +163,7 @@ fn bench<F: FnMut()>(mut f: F, warmup: usize, reps: usize) -> f64 {
 }
 
 fn main() {
-    const N_OPTIONS: usize = 128 * 1024; 
+    const N_OPTIONS: usize = 128 * 1024;
     const WARMUP: usize = 3;
     const REPS: usize = 15;
 
@@ -207,8 +204,8 @@ fn main() {
         N_OPTIONS,
     );
 
-    let bs_tol = 1e-4f32; 
-    let bin_tol = 1e-4f32; 
+    let bs_tol = 1e-4f32;
+    let bin_tol = 1e-4f32;
     let (bs_max_rel, bs_mism) = compare(&res_bs, &ref_bs, bs_tol);
     let (bin_max_rel, bin_mism) = compare(&res_bin, &ref_bin, bin_tol);
 

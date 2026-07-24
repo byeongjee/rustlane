@@ -1,11 +1,11 @@
 error: identifiers starting with `__` are reserved by #[kernel] machinery
-  --> tests/ui/reserved_in_for_iter.rs:13:13
+  --> tests/ui/reserved_in_for_iter.rs:10:13
    |
-13 |         let __stolen = __exec;
+10 |         let __stolen = __exec;
    |             ^^^^^^^^
 
 error: identifiers starting with `__` are reserved by #[kernel] machinery
-  --> tests/ui/reserved_in_for_iter.rs:13:24
+  --> tests/ui/reserved_in_for_iter.rs:10:24
    |
-13 |         let __stolen = __exec;
+10 |         let __stolen = __exec;
    |                        ^^^^^^

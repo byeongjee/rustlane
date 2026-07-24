@@ -1,5 +1,5 @@
 error: `&mut` borrows are not supported in #[kernel] expressions (pass `&mut` slices only as whole arguments to kernel calls)
-  --> tests/ui/mut_ref_expr.rs:11:13
-   |
-11 |     let p = &mut a;
-   |             ^^^^^^
+ --> tests/ui/mut_ref_expr.rs:9:13
+  |
+9 |     let p = &mut a;
+  |             ^^^^^^

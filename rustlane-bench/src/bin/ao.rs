@@ -6,7 +6,7 @@ use std::time::Instant;
 
 #[derive(SpmdValue, Clone, Copy)]
 #[repr(C)]
-#[allow(dead_code)] 
+#[allow(dead_code)]
 struct Isect {
     t: f32,
     px: f32,
@@ -74,7 +74,7 @@ fn plane_isect(
     dz: Varying<f32>,
 ) -> VaryingIsect<N> {
     let mut out = isect;
-    let v = dy; 
+    let v = dy;
     if math::abs(v) >= 1.0e-17 {
         let t = (0.0 - (oy + 0.5)) / v;
         if t > 0.0 && t < isect.t {

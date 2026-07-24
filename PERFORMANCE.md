@@ -114,7 +114,7 @@ rejection rules, and hand-expanded lowering-contract tests.
 
 - **ao and rt overstate pure codegen wins.** Both are ~2× faster than
   ISPC, but part of that comes from different (legitimate) lane
-  mappings: the library's v1 `foreach` forms are 1-D/2-D, so ao maps
+  mappings: the library's `foreach` forms are 1-D/2-D, so ao maps
   lanes to adjacent columns rather than ISPC's 4-D tile of pixel
   subsamples, which improves ray coherence. The comparison is fair as
   "what each system's natural program achieves," not as isolated

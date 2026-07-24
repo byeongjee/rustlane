@@ -1,4 +1,3 @@
-
 use proc_macro2::Span;
 use quote::ToTokens;
 use syn::parse::{Parse, ParseStream};
@@ -12,12 +11,14 @@ use syn::{
 use crate::kernel::{check_reserved, widen_path, widen_type};
 use crate::scan::{scan_block, scan_expr, ExitScan};
 
-
 pub enum RetMode {
     Unit,
     Value(Box<Type>),
 }
 
+/// Rewrites a kernel fn body into the statement list spliced into both arms
+/// of the dual-context skeleton. Includes the prologue/epilogue when the body
+/// contains early `return`s.
 pub fn rewrite_body(block: Block, ret_mode: RetMode) -> (Vec<Stmt>, Vec<Error>) {
     let has_ret = scan_block(&block).ret;
     let mut rw = Rewriter {
@@ -90,7 +91,6 @@ fn is_tail_value(e: &Expr) -> bool {
             | Expr::Continue(_)
     )
 }
-
 
 struct Frame {
     loop_id: Ident,
@@ -184,7 +184,6 @@ impl Rewriter {
             out.push(parse_quote_spanned!(sp=> let __exec = __exec.refresh(&__fn);));
         }
     }
-
 
     fn rewrite_block(&mut self, b: Block) -> Block {
         Block {
@@ -290,7 +289,6 @@ impl Rewriter {
         }
     }
 
-
     fn emit_if_stmt(&mut self, i: ExprIf, out: &mut Vec<Stmt>) {
         let whole = Expr::If(i);
         let s = scan_expr(&whole);
@@ -354,7 +352,6 @@ impl Rewriter {
         self.refresh_after(scan, sp, out);
     }
 
-
     fn emit_while(&mut self, w: ExprWhile, out: &mut Vec<Stmt>) {
         if !w.attrs.is_empty() {
             self.err(&w.attrs[0], "attributes on kernel statements are not supported");
@@ -364,7 +361,7 @@ impl Rewriter {
         }
         if matches!(&*w.cond, Expr::Let(_)) {
             self.err(&w.cond, "`while let` is not supported in #[kernel]; use a plain condition");
-            return; 
+            return;
         }
         let sp = w.while_token.span;
         self.emit_while_core(*w.cond, w.body, sp, out);
@@ -433,7 +430,6 @@ impl Rewriter {
             out,
         );
     }
-
 
     fn emit_for(&mut self, f: ExprForLoop, out: &mut Vec<Stmt>) {
         if !f.attrs.is_empty() {
@@ -560,7 +556,6 @@ impl Rewriter {
         );
     }
 
-
     fn emit_break(&mut self, b: syn::ExprBreak, following: bool, out: &mut Vec<Stmt>) {
         if let Some(lbl) = &b.label {
             self.err(lbl, "labeled `break` is not supported in #[kernel] (masks target the innermost loop only)");
@@ -645,7 +640,7 @@ impl Rewriter {
             };
             self.errors.push(Error::new(
                 sp,
-                format!("`return` inside {what} is not supported in #[kernel] v1"),
+                format!("`return` inside {what} is not supported in #[kernel]"),
             ));
             return;
         }
@@ -690,7 +685,6 @@ impl Rewriter {
             }
         }
     }
-
 
     fn emit_assign(&mut self, a: syn::ExprAssign, out: &mut Vec<Stmt>) {
         let sp = a.eq_token.span;
@@ -759,7 +753,6 @@ impl Rewriter {
             );
         }
     }
-
 
     fn emit_macro(&mut self, mac: Macro, _following: bool, out: &mut Vec<Stmt>) {
         let name = mac
@@ -970,7 +963,6 @@ impl Rewriter {
         self.emit_while_core(input.cond, input.body, sp, out);
     }
 
-
     fn rw(&mut self, e: Expr) -> Expr {
         match e {
             Expr::Array(mut a) => {
@@ -1030,7 +1022,7 @@ impl Rewriter {
             e @ (Expr::ForLoop(_) | Expr::Loop(_) | Expr::While(_) | Expr::If(_)) => {
                 self.err(
                     &e,
-                    "control flow cannot produce a value in #[kernel] v1: use it in statement \
+                    "control flow cannot produce a value in #[kernel]: use it in statement \
                      position and assign to a variable (or use `Varying::select` for a \
                      branchless pick)",
                 );
@@ -1072,7 +1064,7 @@ impl Rewriter {
             Expr::Match(m) => {
                 self.err(
                     &m,
-                    "`match` is not supported in #[kernel] v1 (including on uniform values); \
+                    "`match` is not supported in #[kernel] (including on uniform values); \
                      rewrite as an if/else chain",
                 );
                 Expr::Match(m)
@@ -1149,7 +1141,7 @@ impl Rewriter {
             Expr::Unsafe(u) => {
                 self.err(
                     &u,
-                    "`unsafe` blocks are not supported in #[kernel] v1 (unchecked memory access \
+                    "`unsafe` blocks are not supported in #[kernel] (unchecked memory access \
                      will arrive with a dedicated opt-in)",
                 );
                 Expr::Unsafe(u)
@@ -1306,7 +1298,6 @@ impl Rewriter {
         self.rw(a)
     }
 
-
     fn rw_cond(&mut self, e: Expr) -> Expr {
         match e {
             Expr::Unary(u) if matches!(u.op, syn::UnOp::Not(_)) => {
@@ -1349,7 +1340,6 @@ impl Rewriter {
         }
     }
 }
-
 
 fn block_stmt(stmts: Vec<Stmt>) -> Stmt {
     Stmt::Expr(
@@ -1459,7 +1449,7 @@ fn paren_for_receiver(e: Expr) -> Expr {
     }
 }
 
-
+/// `foreach!(i in start..end { BODY })` — endpoints are uniform `usize`.
 pub struct ForeachInput {
     pub var: Ident,
     pub start: Expr,
@@ -1505,6 +1495,7 @@ impl Parse for ForeachInput {
     }
 }
 
+/// `foreach_2d!(y in 0..h, x in 0..w { BODY })` (also `foreach_tiled!`).
 pub struct Foreach2dInput {
     pub yvar: Ident,
     pub ystart: Expr,
@@ -1533,6 +1524,7 @@ impl Parse for Foreach2dInput {
     }
 }
 
+/// `cif!(cond => { .. })` / `cif!(cond => { .. } else { .. })`.
 pub struct CifInput {
     pub cond: Expr,
     pub then: Block,
@@ -1554,6 +1546,7 @@ impl Parse for CifInput {
     }
 }
 
+/// `cwhile!(cond => { .. })`.
 pub struct CondBlockInput {
     pub cond: Expr,
     pub body: Block,

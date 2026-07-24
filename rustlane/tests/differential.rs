@@ -1,9 +1,7 @@
-
 #![feature(portable_simd)]
 
 use rustlane::kernel;
 use rustlane::prelude::*;
-
 
 struct XorShift(u32);
 
@@ -32,8 +30,7 @@ impl XorShift {
     }
 }
 
-const BATCHES: usize = 64; 
-
+const BATCHES: usize = 64;
 
 fn ulp_key(x: f32) -> i64 {
     let bits = x.to_bits() as i32 as i64;
@@ -50,7 +47,6 @@ fn ulp_diff(a: f32, b: f32) -> i64 {
     }
     (ulp_key(a) - ulp_key(b)).abs()
 }
-
 
 fn run_diff_i32(
     name: &str,
@@ -133,7 +129,6 @@ fn run_scatter_diff(
     }
 }
 
-
 macro_rules! assert_kernel_matches_scalar {
     (int, range = $r:expr, $kern:ident, $scalar:expr $(,)?) => {
         run_diff_i32(
@@ -175,7 +170,6 @@ macro_rules! assert_kernel_matches_scalar {
         )
     };
 }
-
 
 #[kernel]
 fn k_if_accum(x: Varying<i32>) -> Varying<i32> {
@@ -394,7 +388,6 @@ fn d1_early_return_top() {
     });
 }
 
-
 #[kernel]
 fn k_d2_ifif(x: Varying<i32>) -> Varying<i32> {
     let mut acc = Varying::splat(0);
@@ -553,7 +546,6 @@ fn d3_if_while_return() {
     });
 }
 
-
 #[kernel]
 fn k_gather(tbl: &[i32], x: Varying<i32>) -> Varying<i32> {
     let j = x & 15;
@@ -596,7 +588,6 @@ fn mem_scatter() {
         }
     });
 }
-
 
 #[kernel]
 fn k_float_ifelse(x: Varying<f32>) -> Varying<f32> {
@@ -643,8 +634,6 @@ fn float_while() {
         acc
     });
 }
-
-
 
 #[kernel]
 fn k_adv_stmt_after_break(x: Varying<i32>) -> Varying<i32> {

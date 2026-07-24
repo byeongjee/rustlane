@@ -3,7 +3,6 @@
 use core::simd::Mask;
 use rustlane::{kernel, AllOn, MaskedAssign, SpmdValue, VMask, Varying};
 
-
 #[derive(SpmdValue, Clone, Copy, Debug, PartialEq)]
 #[repr(C)]
 struct Vec3 {
@@ -26,7 +25,6 @@ struct Hit {
     #[spmd(uniform)]
     id: i32,
 }
-
 
 #[kernel]
 impl Vec3 {
@@ -70,7 +68,6 @@ fn choose_dot(
     p.x * p.x + p.y * p.y + p.z * p.z
 }
 
-
 fn ref_dot(a: Vec3, b: Vec3) -> f32 {
     a.x * b.x + a.y * b.y + a.z * b.z
 }
@@ -95,7 +92,6 @@ fn ref_choose_dot(sel: f32, a: Vec3, b: Vec3, c: Vec3) -> f32 {
     };
     ref_dot(p, p)
 }
-
 
 fn v3_lanes<const N: usize>(f: impl Fn(usize) -> Vec3) -> VaryingVec3<N>
 where
@@ -133,7 +129,6 @@ fn sample2(l: usize) -> Vec3 {
     let f = l as f32;
     Vec3 { x: 0.5 * f - 1.0, y: 3.0 - f, z: 2.0 + 0.5 * f }
 }
-
 
 #[test]
 fn methods_dot_cross_normalize() {
@@ -251,4 +246,3 @@ fn mixed_struct_uniform_field() {
     MaskedAssign::masked_assign(&mut hv2, rustlane::BoolGuard(true), src);
     assert_eq!(hv2.id, 42);
 }
-

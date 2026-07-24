@@ -1,5 +1,5 @@
-error: control flow cannot produce a value in #[kernel] v1: use it in statement position and assign to a variable (or use `Varying::select` for a branchless pick)
-  --> tests/ui/control_flow_in_value.rs:10:13
-   |
-10 |     let r = if x > 0 { x } else { -x };
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+error: control flow cannot produce a value in #[kernel]: use it in statement position and assign to a variable (or use `Varying::select` for a branchless pick)
+ --> tests/ui/control_flow_in_value.rs:8:13
+  |
+8 |     let r = if x > 0 { x } else { -x };
+  |             ^^^^^^^^^^^^^^^^^^^^^^^^^^

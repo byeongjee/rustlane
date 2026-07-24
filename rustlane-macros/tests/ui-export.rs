@@ -1,4 +1,3 @@
-
 #[test]
 fn ui_export() {
     let dir = std::path::Path::new("tests/ui-export");

@@ -1,5 +1,5 @@
-error: `return` inside `unmasked!` is not supported in #[kernel] v1
-  --> tests/ui/return_in_unmasked.rs:12:9
-   |
-12 |         return Varying::splat(7);
-   |         ^^^^^^
+error: `return` inside `unmasked!` is not supported in #[kernel]
+ --> tests/ui/return_in_unmasked.rs:9:9
+  |
+9 |         return Varying::splat(7);
+  |         ^^^^^^
