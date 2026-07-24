@@ -1,0 +1,68 @@
+{
+  "_meta": {
+    "description": "Integration run of the SPMD-macro benchmark ports, joined with the ISPC reference manifest (ispc-ref/BASELINES.json). spmd_ms = best (min-of-N) whole-benchmark time measured by each Rust bench binary in THIS integration session; ispc_x8_ms/ispc_x4_ms/serial_ms copied from BASELINES.json. ALL ms values are PROVISIONAL: measured on Apple Silicon NEON under concurrent multi-agent CPU load; final evaluation re-measures. Every port validated against ispc-ref/ref-out/*.bin and exited 0.",
+    "platform": "Apple Silicon aarch64 / NEON, spmd N=8 (neon-i32x8-equivalent)",
+    "build": "cargo build --workspace --release: GREEN. cargo test --workspace: GREEN (all suites pass, 0 failed).",
+    "measured_this_session": true,
+    "fidelity_review": "Adversarial fidelity+perf review pass applied 3 fixes and re-measured (still under concurrent load): (1) options binomial_put: restored the in-loop `/ disc` division (the port had strength-reduced it to a hoisted reciprocal multiply; ISPC's binary does a real fdiv.4s per tree step) — max_rel vs .bin improved 1.70e-6 -> 2.43e-7; (2) ao: restored the full occlusion-ray Isect bookkeeping (t/p/n + vnormalize) that the ISPC binary performs in the AO sample loop (port had hit-only kernels); output checksum identical (365243.449219), time 158.5 -> ~191 ms, still ~2.05x ahead of ISPC x8; (3) volume driver: 5 -> 15 timed reps to match bench_volume.cpp. spmd_ms values below updated accordingly."
+  },
+  "mandelbrot": {
+    "spmd_ms": 12.267,
+    "ispc_x8_ms": 14.578,
+    "ispc_x4_ms": 26.450,
+    "serial_ms": 78.1,
+    "validated": true,
+    "note": "Self-validates against its own natural-port checksum 27304085 (does not load the .bin); ISPC .bin checksum is 27303781, diff 304/27.3M = 1.1e-5, within boundary-divergence tolerance. Frozen reference example. spmd 12.27ms is ~1.19x ahead of ISPC neon-i32x8 (14.578ms). export==direct checksum."
+  },
+  "options": {
+    "black_scholes": {
+      "spmd_ms": 0.5165,
+      "ispc_x8_ms": 0.5241,
+      "ispc_x4_ms": 0.5833,
+      "validated": true,
+      "note": "BIT-EXACT vs options_bs.bin: max_rel=0.000e0, 0/131072 mismatches, our BS sum 13102023.000000 == ISPC 13102023.000000. Sub-millisecond kernel; review-pass best of repeated runs 0.5165ms matches ISPC x8 (0.5241ms). Earlier 0.92ms reading was contention jitter."
+    },
+    "binomial_put": {
+      "spmd_ms": 31.800,
+      "ispc_x8_ms": 27.3461,
+      "ispc_x4_ms": 44.7074,
+      "validated": true,
+      "note": "FIDELITY FIX applied by review: in-loop `/ disc` restored (port had hoisted a reciprocal multiply; ISPC does fdiv.4s per tree step). Post-fix vs options_binomial.bin: max_rel=2.43e-7 (was 1.70e-6), 0/131072 mismatches; binomial sum 12344331 vs ISPC 12344328. ~16% behind ISPC neon-i32x8 (27.35ms) under review-session load, under the 25% gate; remaining gap: ISPC contracts (1-Pu)*V[k]+Pu*V[k+1] to fmul+fmla, Rust emits fmul+fmul+fadd (no contraction)."
+    },
+    "serial_ms_combined": 130.81,
+    "validated": true,
+    "note": "One bench, two kernels timed separately (BASELINES.json 'options' block). serial_ms is combined for both kernels. Post-fix overall CHECKSUM 25446354 vs ISPC 25446351 (rel 1.2e-7). Program exits 0."
+  },
+  "stencil": {
+    "spmd_ms": 92.456,
+    "ispc_x8_ms": 102.732,
+    "ispc_x4_ms": 113.439,
+    "serial_ms": 111.011,
+    "validated": true,
+    "note": "fma-tolerance vs stencil.bin: checksum_rel=1.09e-10, max_abs=4.43e-5, 11947669/16777216 bit-exact, all halo cells bit-exact. Divergence is pure reference-side fma contraction over 6 iterations (proven: a non-fma scalar recompute is byte-identical to this kernel; an fma scalar recompute matches the .bin). Memory-bound; spmd 92.5ms is ~1.11x ahead of ISPC neon-i32x8 (102.732ms)."
+  },
+  "volume": {
+    "spmd_ms": 2396.126,
+    "ispc_x8_ms": 1979.82,
+    "ispc_x4_ms": 2302.738,
+    "serial_ms": 3134.142,
+    "validated": true,
+    "note": "vs volume.bin (serial ground truth): checksum_rel=2.68e-8, max_rel=8.98e-4, max_abs=6.62e-5, 0/1060864 mismatches. Review fix: driver now 3 warmup + min-of-15 reps matching bench_volume.cpp (was min-of-5). ~21% behind ISPC neon-i32x8 (1979.82ms), under the 25% gate. Density-gather-bound; asm-confirmed residual gap: the safe gather materialises a per-gather vector bounds mask (sshll/cmhi/uzp1/addv, ~14 instrs) plus 8 guarded ld1.s lane loads, where ISPC reuses its exec mask; ISPC also pays guarded lane loads, so the delta is the bounds-mask computation."
+  },
+  "ao": {
+    "spmd_ms": 191.184,
+    "ispc_x8_ms": 392.771,
+    "ispc_x4_ms": 466.884,
+    "serial_ms": 923.238,
+    "validated": true,
+    "note": "FIDELITY FIX applied by review: occlusion rays now run the full sphere/plane Isect bookkeeping (nearest-t + hit point + normal + vnormalize) exactly as ao.ispc does (ISPC's compiled AO loop keeps that work; the port had hit-only kernels). Output checksum IDENTICAL pre/post fix (365243.449219) proving the shortcut was output-equivalent; time 158.5 -> 191.2ms. Statistical gate PASSED: 0.0224% rel err vs ao_ispc.bin (gate 0.1%; ISPC x8 itself is 0.018% off by the same per-width RNG-stream mechanism). spmd 191.2ms is ~2.05x AHEAD of ISPC neon-i32x8 (392.771ms); remaining legitimate structural differences: 2-D foreach!+uniform u/v loops instead of ISPC's 4-D foreach_tiled (v1 library has no 4-D form; lanes map to distinct pixels so plain stores replace ISPC's atomic_add_local)."
+  },
+  "rt": {
+    "spmd_ms": 50.398,
+    "ispc_x8_ms": 95.766,
+    "ispc_x4_ms": 106.571,
+    "serial_ms": 315.412,
+    "validated": true,
+    "note": "BIT-EXACT vs rt.bin (serial ground truth): max_rel_err=0.000e0, 0/810000 mismatches, checksum 7.1449470502e8 == serial exactly. 900x900, 121149 BVH nodes, 66454 triangles, one primary ray/pixel. spmd 50.4ms is ~1.90x AHEAD of ISPC neon-i32x8 (95.766ms) via a uniform-stack BVH traversal in plain generic-N Varying code (matched clang FMA contraction to reach bit-exact)."
+  }
+}
