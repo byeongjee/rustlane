@@ -1,0 +1,11 @@
+error[E0277]: cannot assign to a value of type `i32` under execution context `VMask<N>`
+  --> tests/ui/uniform_assign.rs:14:7
+   |
+14 |     s = 5;
+   |       ^ this assignment target cannot be written under the current control-flow mask
+   |
+   = help: the trait `rustlane::MaskedAssign<VMask<N>, _>` is not implemented for `i32`
+   = note: assigning to a uniform (scalar) variable under VARYING control flow is not supported: every lane would race on one location. Make the variable a `Varying`, hoist the assignment out of the varying branch, or wrap it in `unmasked!` if all-lanes semantics are intended
+   = help: the following other types implement trait `rustlane::MaskedAssign<E, V>`:
+             `i32` implements `rustlane::MaskedAssign<AllOn>`
+             `i32` implements `rustlane::MaskedAssign<BoolGuard>`

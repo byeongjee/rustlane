@@ -1,5 +1,0 @@
-error: #[spmd::kernel] takes no arguments
- --> tests/ui/kernel_takes_no_args.rs:6:10
-  |
-6 | #[kernel(fast)]
-  |          ^^^^

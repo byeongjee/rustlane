@@ -1,0 +1,37 @@
+error[E0308]: mismatched types
+  --> tests/ui/uniform_while_under_varying.rs:14:11
+   |
+14 |     while k < 4 {
+   |     ----- ^^^ expected `Mask<i32, N>`, found `bool`
+   |     |
+   |     arguments to this method are incorrect
+   |
+   = note: expected struct `Mask<i32, N>`
+                found type `bool`
+help: the return type of this call is `bool` due to the type of the argument passed
+  --> tests/ui/uniform_while_under_varying.rs:14:5
+   |
+14 |     while k < 4 {
+   |     ^^^^^ --- this argument influences the return type of `enter_loop`
+note: method defined here
+  --> $WORKSPACE/rustlane-core/src/exec.rs
+   |
+   |     fn enter_loop(self, first_cond: C) -> Self::LoopState;
+   |        ^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> tests/ui/uniform_while_under_varying.rs:14:5
+   |
+14 |     while k < 4 {
+   |     ^^^^^
+   |     |
+   |     expected `Mask<i32, N>`, found `bool`
+   |     arguments to this method are incorrect
+   |
+   = note: expected struct `Mask<i32, N>`
+                found type `bool`
+note: method defined here
+  --> $WORKSPACE/rustlane-core/src/exec.rs
+   |
+   |     fn and_cond(self, cond: C) -> Self;
+   |        ^^^^^^^^

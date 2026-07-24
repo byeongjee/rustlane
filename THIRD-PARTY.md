@@ -107,7 +107,7 @@ pointing here.
 (`ISPCAlloc`/`ISPCLaunch`/`ISPCSync` and the `TaskFuncPtr` signature, which are
 defined by ISPC and thus BSD-3-Clause); the serial implementation itself is
 original to this project. Similarly, the `foreach_tiled!` lowering in
-`spmd-macros/src/rewrite.rs` reproduces the tile-span sizing and traversal
+`rustlane-macros/src/rewrite.rs` reproduces the tile-span sizing and traversal
 order of ISPC's `lGetSpans` (`src/stmt.cpp`, BSD-3-Clause) — a behavioral port
 of that rule, noted here for completeness; the Rust implementation is
 original.
@@ -120,15 +120,15 @@ coefficients. Each file carries a header note pointing here.
 
 | File | Ported from |
 | --- | --- |
-| `spmd-core/src/math.rs` | ISPC `stdlib/stdlib.ispc` default-precision polynomials for `exp`, `log`, `sin`, `cos`, `pow`. The thin hardware wrappers (`sqrt`/`abs`/`min`/`max`/`floor`/`ceil`/`round`/`clamp`/`lerp`) and the NEON reciprocal/rsqrt estimates are original. See the syrah note below. |
-| `spmd-core/src/rng.rs` | ISPC `stdlib/stdlib.ispc` `random`/`frandom`/`seed_rng` and `struct RNGState` from `stdlib/include/core.isph` (LFSR113 / combined-Tausworthe) |
-| `spmd-bench/src/bin/ao.rs` | `ispc-ref/ao.ispc` (aobench) |
-| `spmd-bench/src/bin/mandelbrot.rs` | `ispc-ref/mandelbrot.ispc` |
-| `spmd-bench/src/bin/mandelbrot_export.rs`, `spike_mandelbrot.rs`, `spike_machinery.rs`, `spike_core.rs`, `spike_x86_shim.rs` | Same `mandel` kernel as `mandelbrot.rs` (from `ispc-ref/mandelbrot.ispc`), repeated in codegen-spike / export-gate variants |
-| `spmd-bench/src/bin/options.rs` | `ispc-ref/options.ispc` (incl. the CND polynomial) |
-| `spmd-bench/src/bin/rt.rs` | `ispc-ref/rt.ispc` |
-| `spmd-bench/src/bin/stencil.rs` | `ispc-ref/stencil.ispc` |
-| `spmd-bench/src/bin/volume.rs` | `ispc-ref/volume.ispc` |
+| `rustlane-core/src/math.rs` | ISPC `stdlib/stdlib.ispc` default-precision polynomials for `exp`, `log`, `sin`, `cos`, `pow`. The thin hardware wrappers (`sqrt`/`abs`/`min`/`max`/`floor`/`ceil`/`round`/`clamp`/`lerp`) and the NEON reciprocal/rsqrt estimates are original. See the syrah note below. |
+| `rustlane-core/src/rng.rs` | ISPC `stdlib/stdlib.ispc` `random`/`frandom`/`seed_rng` and `struct RNGState` from `stdlib/include/core.isph` (LFSR113 / combined-Tausworthe) |
+| `rustlane-bench/src/bin/ao.rs` | `ispc-ref/ao.ispc` (aobench) |
+| `rustlane-bench/src/bin/mandelbrot.rs` | `ispc-ref/mandelbrot.ispc` |
+| `rustlane-bench/src/bin/mandelbrot_export.rs`, `spike_mandelbrot.rs`, `spike_machinery.rs`, `spike_core.rs`, `spike_x86_shim.rs` | Same `mandel` kernel as `mandelbrot.rs` (from `ispc-ref/mandelbrot.ispc`), repeated in codegen-spike / export-gate variants |
+| `rustlane-bench/src/bin/options.rs` | `ispc-ref/options.ispc` (incl. the CND polynomial) |
+| `rustlane-bench/src/bin/rt.rs` | `ispc-ref/rt.ispc` |
+| `rustlane-bench/src/bin/stencil.rs` | `ispc-ref/stencil.ispc` |
+| `rustlane-bench/src/bin/volume.rs` | `ispc-ref/volume.ispc` |
 
 ### Generated files
 
@@ -149,7 +149,7 @@ compiled benchmark binaries, and the reference outputs under
 
 The `ao` benchmark reached this project through ISPC: ISPC's
 `examples/cpu/aobench/ao.ispc` is itself "Based on Syoyo Fujita's aobench", and
-`ispc-ref/ao.ispc` plus its Rust port `spmd-bench/src/bin/ao.rs` derive from
+`ispc-ref/ao.ispc` plus its Rust port `rustlane-bench/src/bin/ao.rs` derive from
 that. ISPC's copy carries Intel's BSD-3-Clause header (reproduced above) and
 retains the Syoyo Fujita credit line; both are preserved in this project. There
 is no license conflict — BSD-3-Clause over BSD-3-Clause.
@@ -196,7 +196,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - Upstream: <https://github.com/boulos/syrah>
 
 The transcendental polynomial coefficients that ISPC's standard library uses
-(and therefore the ports in `spmd-core/src/math.rs`) originate from syrah, as
+(and therefore the ports in `rustlane-core/src/math.rs`) originate from syrah, as
 credited in ISPC's `stdlib.ispc` (`// Solomon Boulos's "syrah"`). These
 coefficients entered this project through ISPC's BSD-3-Clause standard library,
 not directly from syrah; the credit is retained as a courtesy and for accuracy.

@@ -1,0 +1,9 @@
+[package]
+name = "rustlane-core"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Runtime for rustlane: the Varying value type, execution-context mask machinery, and SPMD stdlib (ISPC-style SPMD for Rust)"
+keywords = ["simd", "spmd", "ispc", "parallel", "vectorization"]
+categories = ["hardware-support", "concurrency"]
+repository = "https://github.com/byeongjee/rustlane"

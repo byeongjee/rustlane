@@ -1,0 +1,7 @@
+error: #[rustlane::kernel] applies to free functions and inherent `impl` blocks
+ --> tests/ui/not_a_fn.rs:6:1
+  |
+6 | / struct Bad {
+7 | |     x: i32,
+8 | | }
+  | |_^

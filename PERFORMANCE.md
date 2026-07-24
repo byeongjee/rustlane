@@ -1,17 +1,18 @@
-# Performance: spmd vs ISPC
+# Performance: rustlane vs ISPC
 
-Final measurements of the `spmd` library — an ISPC-style SPMD-on-SIMD
+Final measurements of the `rustlane` library — an ISPC-style SPMD-on-SIMD
 programming model for Rust, implemented entirely at the library level
 (proc macros + nightly `std::simd`, no compiler modification) — against
-Intel ISPC 1.30 on the six kernels of ISPC's example/benchmark suite.
+Intel ISPC 1.30 on seven kernels from six programs of ISPC's
+example/benchmark suite (`options` contributes two).
 
 ## Headline
 
-**Geometric mean of spmd/ISPC-best runtime across the 7 kernels: 0.784**
-(spmd is ~22% faster on average). Six of seven kernels run at parity or
+**Geometric mean of rustlane/ISPC-best runtime across the 7 kernels: 0.784**
+(rustlane is ~22% faster on average). Six of seven kernels run at parity or
 faster than the best ISPC NEON target; one (volume) is 12.8% slower.
 
-| Kernel | Serial C++ | ISPC neon-i32x4 | ISPC neon-i32x8 | spmd (Rust) | spmd / ISPC-best | spmd vs serial |
+| Kernel | Serial C++ | ISPC neon-i32x4 | ISPC neon-i32x8 | rustlane (Rust) | rustlane / ISPC-best | rustlane vs serial |
 |---|---:|---:|---:|---:|---:|---:|
 | mandelbrot | 77.9 ms | 26.3 ms | 14.7 ms | **12.3 ms** | **0.84** | 6.3× |
 | options: black_scholes | 1.31 ms | 0.70 ms | 0.72 ms | **0.52 ms** | **0.74** | 2.5× |
@@ -29,9 +30,9 @@ faster than the best ISPC NEON target; one (volume) is 12.8% slower.
 - 5 interleaved rounds over every binary in a fixed order with 2 s
   cool-downs; each binary performs 3 warm-up + internal min-of-15 reps
   (mandelbrot: 20); the reported value is the minimum across rounds.
-  Runner: `spmd-bench/measure.sh`; parser: `spmd-bench/parse_measurements.py`;
-  raw log: `spmd-bench/measure-log.txt`; machine-readable results:
-  `spmd-bench/RESULTS.final.json`.
+  Runner: `rustlane-bench/measure.sh`; parser: `rustlane-bench/parse_measurements.py`;
+  raw log: `rustlane-bench/measure-log.txt`; machine-readable results:
+  `rustlane-bench/RESULTS.final.json`.
 - Workloads are ISPC's example defaults, identical on every
   implementation (same inputs, same data files, same work per timed rep).
 
@@ -47,7 +48,7 @@ faster than the best ISPC NEON target; one (volume) is 12.8% slower.
 | mandelbrot | self-checksum; matches ISPC modulo fma boundary pixels (0.16%) |
 | ao | statistical: 0.022% checksum deviation (RNG streams legitimately differ per gang width; ISPC's own x4/x8/serial spread is 0.04%) |
 
-Additionally, the library itself carries 140 workspace tests: an N=1
+Additionally, the library itself carries 142 workspace tests: an N=1
 (scalar) vs N=8 differential suite over 30 kernels including adversarial
 mask-stack stressors, a 48-case compile-fail suite for the static
 rejection rules, and hand-expanded lowering-contract tests.
@@ -66,7 +67,7 @@ rejection rules, and hand-expanded lowering-contract tests.
 3. **Contiguity in the type system.** `foreach` indices carry a
    `LinearIndex` type; index arithmetic with uniform offsets stays
    contiguous, so stencil's 19 taps are plain vector loads — where ISPC
-   pattern-matches in the compiler, spmd encodes it in types.
+   pattern-matches in the compiler, rustlane encodes it in types.
 4. **Bounds checking that vanishes.** Safe gathers/scatters prove
    whole-vector bounds with one scalar reduction and fall back to a
    masked path only on failure — memory safety at ~1 instruction of cost.
@@ -100,6 +101,6 @@ rejection rules, and hand-expanded lowering-contract tests.
 ```sh
 make -C ispc-ref build-all      # ISPC + serial baselines (needs ispc, clang++)
 cargo build --workspace --release
-./spmd-bench/measure.sh         # ~25 min, writes spmd-bench/measure-log.txt
-python3 spmd-bench/parse_measurements.py
+./rustlane-bench/measure.sh         # ~25 min, writes rustlane-bench/measure-log.txt
+python3 rustlane-bench/parse_measurements.py
 ```

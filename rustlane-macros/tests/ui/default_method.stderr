@@ -1,0 +1,5 @@
+error: `default` methods are not supported in #[rustlane::kernel] impls
+  --> tests/ui/default_method.rs:10:5
+   |
+10 |     default fn go(x: Varying<i32>) -> Varying<i32> {
+   |     ^^^^^^^

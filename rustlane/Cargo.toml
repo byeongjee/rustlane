@@ -1,0 +1,14 @@
+[package]
+name = "rustlane"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "ISPC-style SPMD programming model for Rust: natural control flow lowered to masked SIMD by proc macros over nightly std::simd"
+keywords = ["simd", "spmd", "ispc", "parallel", "vectorization"]
+categories = ["hardware-support", "concurrency"]
+repository = "https://github.com/byeongjee/rustlane"
+readme = "../README.md"
+
+[dependencies]
+rustlane-core = { path = "../rustlane-core" }
+rustlane-macros = { path = "../rustlane-macros" }

@@ -61,6 +61,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustlane"
+version = "0.1.0"
+dependencies = [
+ "rustlane-core",
+ "rustlane-macros",
+]
+
+[[package]]
+name = "rustlane-bench"
+version = "0.1.0"
+dependencies = [
+ "rustlane",
+]
+
+[[package]]
+name = "rustlane-core"
+version = "0.1.0"
+
+[[package]]
+name = "rustlane-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "rustlane",
+ "syn 2.0.119",
+ "trybuild",
+]
+
+[[package]]
 name = "serde"
 version = "1.0.229"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -109,36 +139,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6662b5879511e06e8999a8a235d848113e942c9124f211511b16466ee2995f26"
 dependencies = [
  "serde_core",
-]
-
-[[package]]
-name = "spmd"
-version = "0.1.0"
-dependencies = [
- "spmd-core",
- "spmd-macros",
-]
-
-[[package]]
-name = "spmd-bench"
-version = "0.1.0"
-dependencies = [
- "spmd",
-]
-
-[[package]]
-name = "spmd-core"
-version = "0.1.0"
-
-[[package]]
-name = "spmd-macros"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "spmd",
- "syn 2.0.119",
- "trybuild",
 ]
 
 [[package]]
