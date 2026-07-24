@@ -1,38 +1,76 @@
-# Performance: rustlane vs ISPC
+# Performance: rustlane vs ISPC — Apple Silicon (NEON)
 
-Final measurements of the `rustlane` library — an ISPC-style SPMD-on-SIMD
+Measurements of the `rustlane` library — an ISPC-style SPMD-on-SIMD
 programming model for Rust, implemented entirely at the library level
 (proc macros + nightly `std::simd`, no compiler modification) — against
 Intel ISPC 1.30 on seven kernels from six programs of ISPC's
-example/benchmark suite (`options` contributes two).
+example/benchmark suite (`options` contributes two). x86 (AMD Zen4) numbers
+are in [PERFORMANCE-x86.md](PERFORMANCE-x86.md).
+
+## Two honest baselines, not one "serial"
+
+The C++ reference is compiled from ordinary scalar source. At `-O3` the
+compiler *auto-vectorizes* those scalar loops, so a single "serial" column
+conflates two very different things. We report both:
+
+- **scalar (no-vec)** — `clang++ -O3 -fno-vectorize -fno-slp-vectorize`: the
+  true one-lane floor.
+- **C++ auto-vec** — `clang++ -O3`: the same source with auto-vectorization on.
+  This is what earlier versions of this report labelled "Serial C++".
+
+The gap between them is "free" compiler SIMD; the gap from auto-vec to
+ISPC/rustlane is what the explicit SPMD model adds.
+
+| Kernel | scalar (no-vec) | C++ auto-vec | ratio | what auto-vec did |
+|---|---:|---:|---:|---|
+| mandelbrot | 77.4 ms | 77.3 ms | 1.00× | nothing (divergent control flow) |
+| black_scholes | 1.57 ms | 1.31 ms | 1.19× | modest (transcendentals) |
+| binomial_put | 159.7 ms | 126.5 ms | 1.26× | modest |
+| stencil | 339.9 ms | 108.9 ms | **3.12×** | large (clean data-parallel loop) |
+| volume | 3205 ms | 3112 ms | 1.03× | little (gather-bound) |
+| ao | 888.2 ms | 891.9 ms | 1.00× | nothing (control flow + RNG) |
+| rt | 306.5 ms | 306.7 ms | 1.00× | nothing (BVH traversal) |
+
+So for four of seven kernels the compiler cannot auto-vectorize the scalar
+source at all (the old "serial" number was already ~scalar); for **stencil**
+the old "serial" understated the true one-lane cost by 3.1×.
 
 ## Headline
 
-**Geometric mean of rustlane/ISPC-best runtime across the 7 kernels: 0.784**
-(rustlane is ~22% faster on average). Six of seven kernels run at parity or
-faster than the best ISPC NEON target; one (volume) is 12.8% slower.
+**Geometric mean of rustlane / ISPC-best runtime across the 7 kernels: 0.82**
+(rustlane ~18% faster on average). Six of seven kernels run at parity or
+faster than the best ISPC NEON target; one (volume) is ~13% slower.
 
-| Kernel | Serial C++ | ISPC neon-i32x4 | ISPC neon-i32x8 | rustlane (Rust) | rustlane / ISPC-best | rustlane vs serial |
+| Kernel | scalar | C++ auto-vec | ISPC neon-i32x4 | ISPC neon-i32x8 | rustlane | rustlane / ISPC-best |
 |---|---:|---:|---:|---:|---:|---:|
-| mandelbrot | 77.9 ms | 26.3 ms | 14.7 ms | **12.3 ms** | **0.84** | 6.3× |
-| options: black_scholes | 1.31 ms | 0.70 ms | 0.72 ms | **0.52 ms** | **0.74** | 2.5× |
-| options: binomial_put | 126.7 ms | 43.2 ms | 26.4 ms | **26.9 ms** | **1.02** | 4.7× |
-| stencil | 109.6 ms | 108.2 ms | 102.4 ms | **93.4 ms** | **0.91** | 1.2× |
-| volume | 3116 ms | 2277 ms | 1954 ms | 2204 ms | 1.13 | 1.4× |
-| ao | 893 ms | 452 ms | 379 ms | **192 ms** | **0.51** | 4.6× |
-| rt | 308.6 ms | 103.1 ms | 92.5 ms | **50.8 ms** | **0.55** | 6.1× |
+| mandelbrot | 77.4 ms | 77.3 ms | 26.1 ms | 14.7 ms | **12.3 ms** | **0.84** |
+| options: black_scholes | 1.57 ms | 1.31 ms | 0.58 ms | 0.52 ms | **0.52 ms** | **0.99** |
+| options: binomial_put | 159.7 ms | 126.5 ms | 43.0 ms | 26.3 ms | 27.0 ms | 1.03 |
+| stencil | 339.9 ms | 108.9 ms | 109.9 ms | 101.7 ms | **94.7 ms** | **0.93** |
+| volume | 3205 ms | 3112 ms | 2267 ms | 1947 ms | 2198 ms | 1.13 |
+| ao | 888.2 ms | 891.9 ms | 450.0 ms | 377.9 ms | **192.2 ms** | **0.51** |
+| rt | 306.5 ms | 306.7 ms | 102.9 ms | 91.7 ms | **50.4 ms** | **0.55** |
+
+`rustlane / ISPC-best` uses the faster of the two ISPC NEON targets (neon-i32x8
+in every row). Against the *true scalar* floor rustlane is 1.5× (volume) to
+6.3× (mandelbrot) faster.
 
 ## Environment & methodology
 
 - MacBook Pro (Mac14,10), Apple M2 Pro (8P+4E), 32 GB, macOS 26.5.2 —
   aarch64 NEON. rustc 1.92.0-nightly (2025-10-14); ISPC 1.30.0 (LLVM
-  22.1.0); clang++ (Homebrew LLVM 22), all at `-O3`.
+  22.1.0); clang++ 22.1.8 (Homebrew LLVM), all at `-O3`. rustlane built with
+  the aarch64 default (NEON is the baseline ISA), 8 lanes.
 - 5 interleaved rounds over every binary in a fixed order with 2 s
   cool-downs; each binary performs 3 warm-up + internal min-of-15 reps
   (mandelbrot: 20); the reported value is the minimum across rounds.
-  Runner: `rustlane-bench/measure.sh`; parser: `rustlane-bench/parse_measurements.py`;
-  raw log: `rustlane-bench/measure-log.txt`; machine-readable results:
-  `rustlane-bench/RESULTS.final.json`.
+  Runner: `rustlane-bench/measure.sh`; parser:
+  `rustlane-bench/parse_measurements.py aarch64`; raw log:
+  `rustlane-bench/measure-log.aarch64.txt`; machine-readable results:
+  `rustlane-bench/RESULTS.aarch64.json`.
+- The scalar and auto-vec baselines are the *same* C++ source; only the
+  `-fno-vectorize -fno-slp-vectorize` flags differ, so the pair isolates the
+  compiler's auto-vectorizer.
 - Workloads are ISPC's example defaults, identical on every
   implementation (same inputs, same data files, same work per timed rep).
 
@@ -90,17 +128,16 @@ rejection rules, and hand-expanded lowering-contract tests.
   output bit-exact), and a manually rotated register carry because LLVM
   would not forward a loaded value across the loop back-edge past an
   intervening store (ISPC's own emission rotates registers). With both,
-  the loop is instruction-isomorphic to ISPC's and within 2%.
-- Measured on one machine (Apple Silicon NEON). The x86-64 multi-target
-  dispatch path (SSE2/SSE4.1/AVX2/AVX-512 shims + cpuid dispatch) is
-  verified by disassembly and a Rosetta functional run, but not
-  benchmarked on x86 hardware.
+  the loop is instruction-isomorphic to ISPC's and within a few percent.
+- rustlane is 8 lanes wide on both platforms. See
+  [PERFORMANCE-x86.md](PERFORMANCE-x86.md) for the x86 (Zen4) run, including
+  a same-ISA AVX2 comparison and the effect of AVX-512VL masking.
 
 ## Reproducing
 
 ```sh
-make -C ispc-ref build-all      # ISPC + serial baselines (needs ispc, clang++)
+make -C ispc-ref build-all       # ISPC + scalar/auto-vec C++ baselines (needs ispc, clang++)
 cargo build --workspace --release
-./rustlane-bench/measure.sh         # ~25 min, writes rustlane-bench/measure-log.txt
-python3 rustlane-bench/parse_measurements.py
+./rustlane-bench/measure.sh          # ~25 min, writes rustlane-bench/measure-log.aarch64.txt
+python3 rustlane-bench/parse_measurements.py aarch64
 ```

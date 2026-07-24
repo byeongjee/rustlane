@@ -1,10 +1,15 @@
 /target
+/target-v3
+/target-native
 *.o
 *.bin
+__pycache__/
 ispc-bench/*.llvm
 ispc-bench/*.ispc.bin
 ispc-ref/bench_*_x4
 ispc-ref/bench_*_x8
+ispc-ref/bench_*_a
+ispc-ref/bench_*_b
 ispc-ref/*_ispc.h
 ispc-ref/*_ispc_x8.h
 ispc-ref/ref-out/

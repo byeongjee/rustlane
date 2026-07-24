@@ -58,19 +58,25 @@ others.
 ## Performance
 
 Geometric mean of rustlane / best-ISPC runtime across 7 kernels of ISPC's own
-example suite: **0.784** (rustlane ~22% faster on average on Apple M2 Pro /
+example suite: **0.82** (rustlane ~18% faster on average on Apple M2 Pro /
 NEON). Six of seven kernels reach parity or beat the best ISPC NEON target; one
-(volume) is slower.
+(volume) is slower. x86 (AMD Zen4) numbers are in
+[PERFORMANCE-x86.md](PERFORMANCE-x86.md).
 
-| Kernel | Serial C++ | ISPC neon-i32x4 | ISPC neon-i32x8 | rustlane | rustlane / ISPC-best |
-|---|---:|---:|---:|---:|---:|
-| mandelbrot | 77.9 ms | 26.3 ms | 14.7 ms | **12.3 ms** | **0.84** |
-| options: black_scholes | 1.31 ms | 0.70 ms | 0.72 ms | **0.52 ms** | **0.74** |
-| options: binomial_put | 126.7 ms | 43.2 ms | 26.4 ms | **26.9 ms** | **1.02** |
-| stencil | 109.6 ms | 108.2 ms | 102.4 ms | **93.4 ms** | **0.91** |
-| volume | 3116 ms | 2277 ms | 1954 ms | 2204 ms | 1.13 |
-| ao | 893 ms | 452 ms | 379 ms | **192 ms** | **0.51** |
-| rt | 308.6 ms | 103.1 ms | 92.5 ms | **50.8 ms** | **0.55** |
+The C++ baseline is split into a **true scalar** floor (`-fno-vectorize`) and
+**auto-vectorized** C++ (`-O3`) — the old single "Serial C++" column was really
+the auto-vectorized one. (For stencil the compiler's auto-vectorizer alone is
+3.1×; for mandelbrot/ao/rt it does essentially nothing.)
+
+| Kernel | scalar | C++ auto-vec | ISPC neon-i32x4 | ISPC neon-i32x8 | rustlane | rustlane / ISPC-best |
+|---|---:|---:|---:|---:|---:|---:|
+| mandelbrot | 77.4 ms | 77.3 ms | 26.1 ms | 14.7 ms | **12.3 ms** | **0.84** |
+| options: black_scholes | 1.57 ms | 1.31 ms | 0.58 ms | 0.52 ms | **0.52 ms** | **0.99** |
+| options: binomial_put | 159.7 ms | 126.5 ms | 43.0 ms | 26.3 ms | 27.0 ms | 1.03 |
+| stencil | 339.9 ms | 108.9 ms | 109.9 ms | 101.7 ms | **94.7 ms** | **0.93** |
+| volume | 3205 ms | 3112 ms | 2267 ms | 1947 ms | 2198 ms | 1.13 |
+| ao | 888.2 ms | 891.9 ms | 450.0 ms | 377.9 ms | **192.2 ms** | **0.51** |
+| rt | 306.5 ms | 306.7 ms | 102.9 ms | 91.7 ms | **50.4 ms** | **0.55** |
 
 > Honest caveat: `ao` and `rt` gain partly from a legitimately different
 > lane-to-work mapping (rustlane's v1 `foreach` forms are 1-D/2-D, not ISPC's

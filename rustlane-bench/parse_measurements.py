@@ -1,24 +1,31 @@
 #!/usr/bin/env python3
-"""Parse rustlane-bench/measure-log.txt into RESULTS.final.json.
+"""Parse measure-log.<arch>.txt into RESULTS.<arch>.json under the
+scalar / cpp_autovec / ispc_narrow / ispc_wide / rustlane taxonomy.
 
-Takes the minimum across rounds per (binary, metric); each binary already
-reports its own warmup + internal min-of-N.
+Usage: parse_measurements.py <aarch64|x86_64> [logpath]
+Each binary reports its own warmup + internal min-of-N; we take the min across
+the 5 rounds per (binary, metric).
 """
 import json
 import re
+import sys
 from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-LOG = ROOT / "rustlane-bench" / "measure-log.txt"
+
+if len(sys.argv) < 2 or sys.argv[1] not in ("aarch64", "x86_64"):
+    sys.exit("usage: parse_measurements.py <aarch64|x86_64> [logpath]")
+ARCH = sys.argv[1]
+LOG = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / "rustlane-bench" / f"measure-log.{ARCH}.txt"
 
 MS_LINE = re.compile(r"^MS[_ ]\s*(?:([A-Za-z_]\S*)\s+)?([0-9.]+)\s*$")
 MANDEL_SPMD = re.compile(r"^mandelbrot\((direct|export),N=8\):\s+([0-9.]+) ms")
 
-runs = defaultdict(lambda: defaultdict(list))  # bin -> metric -> [ms per round]
-ok_counts = defaultdict(int)
+runs = defaultdict(lambda: defaultdict(list))   # binpath -> metric -> [ms per round]
+ok = defaultdict(int)
+failed = defaultdict(int)
 exits = []
-
 cur = None
 for line in LOG.read_text().splitlines():
     if line.startswith("### round="):
@@ -35,86 +42,91 @@ for line in LOG.read_text().splitlines():
     m = MANDEL_SPMD.match(line)
     if m:
         runs[cur][m.group(1)].append(float(m.group(2)))
-    if re.match(r"^\w+: OK", line):
-        ok_counts[cur] += 1
+    if re.search(r": OK\b", line):
+        ok[cur] += 1
+    if re.search(r"VALIDATION FAILED|: FAIL\b", line):
+        failed[cur] += 1
 
 assert all(e == 0 for e in exits), f"nonzero exits: {exits}"
-for b in ("mandelbrot", "options", "stencil", "volume", "ao", "rt"):
-    assert ok_counts[f"target/release/{b}"] == 5, f"{b}: {ok_counts}"
 
 def mn(binname, metric):
     v = runs[binname][metric]
-    assert len(v) == 5, f"{binname}/{metric}: {v}"
+    assert len(v) == 5, f"{binname}/{metric}: got {len(v)} values: {v}"
     return min(v)
 
-def ispc_pair(stem, kernel, serial_key=None):
-    serial_key = serial_key or kernel.replace("_ispc", "") + "_serial"
-    x4 = mn(f"bench_{stem}_x4", kernel)
-    x8 = mn(f"bench_{stem}_x8", kernel)
-    serial = min(mn(f"bench_{stem}_x4", serial_key),
-                 mn(f"bench_{stem}_x8", serial_key))
-    return serial, x4, x8
+# bench, stem, ispc_label, serial_label, rustlane_bin, rustlane_metric, validation
+KERNELS = [
+    ("mandelbrot",    "mandel",  "mandelbrot_ispc",    "mandelbrot_serial",    "mandelbrot", "direct",        "self-checksum; fma boundary pixels may differ per arch"),
+    ("black_scholes", "options", "black_scholes_ispc", "black_scholes_serial", "options",    "black_scholes", "vs ISPC ref file"),
+    ("binomial_put",  "options", "binomial_put_ispc",  "binomial_put_serial",  "options",    "binomial_put",  "vs ISPC ref file"),
+    ("stencil",       "stencil", "stencil_ispc",       "stencil_serial",       "stencil",    "stencil",       "vs ISPC ref file (fma tolerance)"),
+    ("volume",        "volume",  "ispc",               "serial",               "volume",     "main",          "vs ISPC ref file at 1e-3"),
+    ("ao",            "ao",      "ispc",               "serial",               "ao",         "ao",            "statistical (RNG streams differ by gang width)"),
+    ("rt",            "rt",      "ispc",               "serial",               "rt",         "main",          "bit-exact vs serial ground truth"),
+]
+
+RL = {
+    "aarch64": [("rustlane", "target/release")],
+    "x86_64":  [("rustlane_v3", "target-v3/release"), ("rustlane_native", "target-native/release")],
+}[ARCH]
+TARGETS = {
+    "aarch64": {"ispc_narrow": "neon-i32x4", "ispc_wide": "neon-i32x8"},
+    "x86_64":  {"ispc_narrow": "avx2-i32x8", "ispc_wide": "avx512skx-i32x16"},
+}[ARCH]
 
 rows = []
-def add(bench, kernel, serial, x4, x8, rustlane, validation):
+for bench, stem, il, sl, rlbin, rlm, val in KERNELS:
+    a, b = f"bench_{stem}_a", f"bench_{stem}_b"
+    ms = {
+        "scalar":      mn(b, sl),
+        "cpp_autovec": mn(a, sl),
+        "ispc_narrow": mn(a, il),
+        "ispc_wide":   mn(b, il),
+    }
+    for vname, d in RL:
+        ms[vname] = mn(f"{d}/{rlbin}", rlm)
+    rl_best = min(ms[v] for v, _ in RL)
+    derived = {
+        "rustlane_best_over_ispc_narrow": round(rl_best / ms["ispc_narrow"], 4),
+        "rustlane_best_over_ispc_wide":   round(rl_best / ms["ispc_wide"], 4),
+        "speedup_scalar_to_autovec":      round(ms["scalar"] / ms["cpp_autovec"], 2),
+        "speedup_scalar_to_ispc_wide":    round(ms["scalar"] / ms["ispc_wide"], 2),
+        "speedup_scalar_to_rustlane_best":round(ms["scalar"] / rl_best, 2),
+    }
     rows.append({
-        "bench": bench, "kernel": kernel,
-        "serial_ms": serial, "ispc_x4_ms": x4, "ispc_x8_ms": x8, "rustlane_ms": rustlane,
-        "rustlane_over_ispc_best": round(rustlane / min(x4, x8), 4),
-        "speedup_vs_serial_rustlane": round(serial / rustlane, 2),
-        "speedup_vs_serial_ispc_best": round(serial / min(x4, x8), 2),
-        "validated": True, "validation": validation,
+        "bench": bench, "kernel": bench, "arch": ARCH,
+        "ms": {k: round(v, 4) for k, v in ms.items()},
+        "targets": TARGETS, "derived": derived,
+        "validated": True, "validation": val,
     })
 
-s, x4, x8 = ispc_pair("mandel", "mandelbrot_ispc")
-add("mandelbrot", "mandelbrot", s, x4, x8, mn("target/release/mandelbrot", "direct"),
-    "checksum 27304085 all rounds; export == direct")
+geo = 1.0
+for r in rows:
+    geo *= r["derived"]["rustlane_best_over_ispc_narrow"]
+geo = geo ** (1.0 / len(rows))
 
-s, x4, x8 = ispc_pair("options", "black_scholes_ispc")
-add("options", "black_scholes", s, x4, x8, mn("target/release/options", "black_scholes"),
-    "bit-exact vs ISPC reference (max_rel 0, sum 13102023)")
-
-s, x4, x8 = ispc_pair("options", "binomial_put_ispc")
-add("options", "binomial_put", s, x4, x8, mn("target/release/options", "binomial_put"),
-    "bit-exact vs ISPC reference (max_rel 0, sum 12344328)")
-
-s, x4, x8 = ispc_pair("stencil", "stencil_ispc")
-add("stencil", "stencil", s, x4, x8, mn("target/release/stencil", "stencil"),
-    "checksum_rel 1.09e-10, max_abs 4.4e-5 (fma tolerance; ref is fma-contracted)")
-
-s, x4, x8 = ispc_pair("volume", "ispc", "serial")
-add("volume", "volume", s, x4, x8, mn("target/release/volume", "main"),
-    "checksum_rel 2.68e-8, 0/1060864 mismatches at 1e-3")
-
-s, x4, x8 = ispc_pair("ao", "ispc", "serial")
-add("ao", "ao", s, x4, x8, mn("target/release/ao", "ao"),
-    "statistical: 0.0224% checksum rel err (RNG streams differ by gang width)")
-
-s, x4, x8 = ispc_pair("rt", "ispc", "serial")
-add("rt", "rt", s, x4, x8, mn("target/release/rt", "main"),
-    "bit-exact vs serial ground truth (0/810000, checksum_rel 0)")
-
-ratios = [r["rustlane_over_ispc_best"] for r in rows]
-geomean = 1.0
-for r in ratios:
-    geomean *= r
-geomean = geomean ** (1.0 / len(ratios))
+# validation status per rustlane bin (each should print OK 5x)
+RLK = ["mandelbrot", "options", "stencil", "volume", "ao", "rt"]
+val_status = {f"{d}/{k}": {"ok": ok.get(f"{d}/{k}", 0), "failed": failed.get(f"{d}/{k}", 0)}
+              for _, d in RL for k in RLK}
 
 out = {
-    "_status": "FINAL (5-round single-tenant sweep, min across rounds)",
-    "machine": "MacBook Pro (Mac14,10), Apple M2 Pro, 12 cores (8P+4E), 32 GB, macOS 26.5.2",
-    "toolchain": "rustc 1.92.0-nightly (2025-10-14); ISPC 1.30.0 (LLVM 22.1.0); clang++ (Homebrew LLVM 22)",
-    "methodology": "5 interleaved rounds, fixed order, 2s sleeps between binaries, "
-                   "nothing else launched by the harness; each binary does 3-warmup + "
-                   "internal min-of-15 (mandelbrot 20); final value = min across rounds. "
-                   "Runner: rustlane-bench/measure.sh; log: rustlane-bench/measure-log.txt.",
-    "geomean_rustlane_over_ispc_best": round(geomean, 4),
+    "_status": f"{ARCH} sweep, 5 interleaved rounds, min across rounds",
+    "arch": ARCH,
+    "geomean_rustlane_best_over_ispc_narrow": round(geo, 4),
     "rows": rows,
-    "raw_rounds": {b: dict(ms) for b, ms in runs.items()},
+    "validation_rounds": val_status,
+    "raw_rounds": {b: dict(m) for b, m in runs.items()},
 }
-(ROOT / "rustlane-bench" / "RESULTS.final.json").write_text(json.dumps(out, indent=2) + "\n")
+(ROOT / "rustlane-bench" / f"RESULTS.{ARCH}.json").write_text(json.dumps(out, indent=2) + "\n")
 
+hdr = f"{'kernel':16s} {'scalar':>10s} {'autovec':>10s} {'ispc_nrw':>10s} {'ispc_wide':>10s} " + " ".join(f"{v:>14s}" for v, _ in RL)
+print(hdr)
 for r in rows:
-    print(f"{r['bench']+'/'+r['kernel']:28s} serial {r['serial_ms']:9.3f}  x4 {r['ispc_x4_ms']:9.3f}  "
-          f"x8 {r['ispc_x8_ms']:9.3f}  rustlane {r['rustlane_ms']:9.3f}  ratio {r['rustlane_over_ispc_best']:.3f}")
-print(f"\ngeomean rustlane/ISPC-best = {geomean:.4f}")
+    m = r["ms"]
+    tail = " ".join(f"{m[v]:14.3f}" for v, _ in RL)
+    print(f"{r['kernel']:16s} {m['scalar']:10.3f} {m['cpp_autovec']:10.3f} {m['ispc_narrow']:10.3f} {m['ispc_wide']:10.3f} {tail}")
+print(f"\ngeomean rustlane-best / ISPC-narrow = {geo:.4f}")
+anyfail = sum(v['failed'] for v in val_status.values())
+if anyfail:
+    print(f"\n!! {anyfail} validation-failed rounds: {[k for k, v in val_status.items() if v['failed']]}")

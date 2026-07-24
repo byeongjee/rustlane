@@ -1,0 +1,597 @@
+{
+  "_status": "x86_64 sweep, 5 interleaved rounds, min across rounds",
+  "arch": "x86_64",
+  "geomean_rustlane_best_over_ispc_narrow": 0.9923,
+  "rows": [
+    {
+      "bench": "mandelbrot",
+      "kernel": "mandelbrot",
+      "arch": "x86_64",
+      "ms": {
+        "scalar": 47.011,
+        "cpp_autovec": 47.045,
+        "ispc_narrow": 8.222,
+        "ispc_wide": 5.966,
+        "rustlane_v3": 6.88,
+        "rustlane_native": 7.709
+      },
+      "targets": {
+        "ispc_narrow": "avx2-i32x8",
+        "ispc_wide": "avx512skx-i32x16"
+      },
+      "derived": {
+        "rustlane_best_over_ispc_narrow": 0.8368,
+        "rustlane_best_over_ispc_wide": 1.1532,
+        "speedup_scalar_to_autovec": 1.0,
+        "speedup_scalar_to_ispc_wide": 7.88,
+        "speedup_scalar_to_rustlane_best": 6.83
+      },
+      "validated": true,
+      "validation": "self-checksum; fma boundary pixels may differ per arch"
+    },
+    {
+      "bench": "black_scholes",
+      "kernel": "black_scholes",
+      "arch": "x86_64",
+      "ms": {
+        "scalar": 2.3949,
+        "cpp_autovec": 2.1147,
+        "ispc_narrow": 0.3375,
+        "ispc_wide": 0.2276,
+        "rustlane_v3": 0.4509,
+        "rustlane_native": 0.4505
+      },
+      "targets": {
+        "ispc_narrow": "avx2-i32x8",
+        "ispc_wide": "avx512skx-i32x16"
+      },
+      "derived": {
+        "rustlane_best_over_ispc_narrow": 1.3348,
+        "rustlane_best_over_ispc_wide": 1.9793,
+        "speedup_scalar_to_autovec": 1.13,
+        "speedup_scalar_to_ispc_wide": 10.52,
+        "speedup_scalar_to_rustlane_best": 5.32
+      },
+      "validated": true,
+      "validation": "vs ISPC ref file"
+    },
+    {
+      "bench": "binomial_put",
+      "kernel": "binomial_put",
+      "arch": "x86_64",
+      "ms": {
+        "scalar": 173.4408,
+        "cpp_autovec": 94.3991,
+        "ispc_narrow": 28.395,
+        "ispc_wide": 24.4848,
+        "rustlane_v3": 27.6356,
+        "rustlane_native": 27.6902
+      },
+      "targets": {
+        "ispc_narrow": "avx2-i32x8",
+        "ispc_wide": "avx512skx-i32x16"
+      },
+      "derived": {
+        "rustlane_best_over_ispc_narrow": 0.9733,
+        "rustlane_best_over_ispc_wide": 1.1287,
+        "speedup_scalar_to_autovec": 1.84,
+        "speedup_scalar_to_ispc_wide": 7.08,
+        "speedup_scalar_to_rustlane_best": 6.28
+      },
+      "validated": true,
+      "validation": "vs ISPC ref file"
+    },
+    {
+      "bench": "stencil",
+      "kernel": "stencil",
+      "arch": "x86_64",
+      "ms": {
+        "scalar": 252.86,
+        "cpp_autovec": 110.628,
+        "ispc_narrow": 86.563,
+        "ispc_wide": 83.903,
+        "rustlane_v3": 97.055,
+        "rustlane_native": 96.692
+      },
+      "targets": {
+        "ispc_narrow": "avx2-i32x8",
+        "ispc_wide": "avx512skx-i32x16"
+      },
+      "derived": {
+        "rustlane_best_over_ispc_narrow": 1.117,
+        "rustlane_best_over_ispc_wide": 1.1524,
+        "speedup_scalar_to_autovec": 2.29,
+        "speedup_scalar_to_ispc_wide": 3.01,
+        "speedup_scalar_to_rustlane_best": 2.62
+      },
+      "validated": true,
+      "validation": "vs ISPC ref file (fma tolerance)"
+    },
+    {
+      "bench": "volume",
+      "kernel": "volume",
+      "arch": "x86_64",
+      "ms": {
+        "scalar": 3739.422,
+        "cpp_autovec": 3894.212,
+        "ispc_narrow": 1518.14,
+        "ispc_wide": 1208.362,
+        "rustlane_v3": 2070.096,
+        "rustlane_native": 2122.017
+      },
+      "targets": {
+        "ispc_narrow": "avx2-i32x8",
+        "ispc_wide": "avx512skx-i32x16"
+      },
+      "derived": {
+        "rustlane_best_over_ispc_narrow": 1.3636,
+        "rustlane_best_over_ispc_wide": 1.7131,
+        "speedup_scalar_to_autovec": 0.96,
+        "speedup_scalar_to_ispc_wide": 3.09,
+        "speedup_scalar_to_rustlane_best": 1.81
+      },
+      "validated": true,
+      "validation": "vs ISPC ref file at 1e-3"
+    },
+    {
+      "bench": "ao",
+      "kernel": "ao",
+      "arch": "x86_64",
+      "ms": {
+        "scalar": 957.669,
+        "cpp_autovec": 961.494,
+        "ispc_narrow": 164.493,
+        "ispc_wide": 129.259,
+        "rustlane_v3": 88.18,
+        "rustlane_native": 91.313
+      },
+      "targets": {
+        "ispc_narrow": "avx2-i32x8",
+        "ispc_wide": "avx512skx-i32x16"
+      },
+      "derived": {
+        "rustlane_best_over_ispc_narrow": 0.5361,
+        "rustlane_best_over_ispc_wide": 0.6822,
+        "speedup_scalar_to_autovec": 1.0,
+        "speedup_scalar_to_ispc_wide": 7.41,
+        "speedup_scalar_to_rustlane_best": 10.86
+      },
+      "validated": true,
+      "validation": "statistical (RNG streams differ by gang width)"
+    },
+    {
+      "bench": "rt",
+      "kernel": "rt",
+      "arch": "x86_64",
+      "ms": {
+        "scalar": 184.197,
+        "cpp_autovec": 151.043,
+        "ispc_narrow": 34.449,
+        "ispc_wide": 25.715,
+        "rustlane_v3": 36.753,
+        "rustlane_native": 36.865
+      },
+      "targets": {
+        "ispc_narrow": "avx2-i32x8",
+        "ispc_wide": "avx512skx-i32x16"
+      },
+      "derived": {
+        "rustlane_best_over_ispc_narrow": 1.0669,
+        "rustlane_best_over_ispc_wide": 1.4292,
+        "speedup_scalar_to_autovec": 1.22,
+        "speedup_scalar_to_ispc_wide": 7.16,
+        "speedup_scalar_to_rustlane_best": 5.01
+      },
+      "validated": true,
+      "validation": "bit-exact vs serial ground truth"
+    }
+  ],
+  "validation_rounds": {
+    "target-v3/release/mandelbrot": {
+      "ok": 5,
+      "failed": 0
+    },
+    "target-v3/release/options": {
+      "ok": 5,
+      "failed": 0
+    },
+    "target-v3/release/stencil": {
+      "ok": 5,
+      "failed": 0
+    },
+    "target-v3/release/volume": {
+      "ok": 5,
+      "failed": 0
+    },
+    "target-v3/release/ao": {
+      "ok": 5,
+      "failed": 0
+    },
+    "target-v3/release/rt": {
+      "ok": 5,
+      "failed": 0
+    },
+    "target-native/release/mandelbrot": {
+      "ok": 5,
+      "failed": 0
+    },
+    "target-native/release/options": {
+      "ok": 5,
+      "failed": 0
+    },
+    "target-native/release/stencil": {
+      "ok": 5,
+      "failed": 0
+    },
+    "target-native/release/volume": {
+      "ok": 5,
+      "failed": 0
+    },
+    "target-native/release/ao": {
+      "ok": 5,
+      "failed": 0
+    },
+    "target-native/release/rt": {
+      "ok": 5,
+      "failed": 0
+    }
+  },
+  "raw_rounds": {
+    "target-v3/release/mandelbrot": {
+      "export": [
+        3.698,
+        4.055,
+        4.051,
+        4.052,
+        4.056
+      ],
+      "direct": [
+        6.88,
+        7.55,
+        7.539,
+        7.539,
+        7.546
+      ]
+    },
+    "target-v3/release/options": {
+      "black_scholes": [
+        0.4514,
+        0.4509,
+        0.4515,
+        0.4517,
+        0.4516
+      ],
+      "binomial_put": [
+        27.6451,
+        27.6622,
+        27.6437,
+        27.6364,
+        27.6356
+      ]
+    },
+    "target-v3/release/stencil": {
+      "stencil": [
+        99.225,
+        97.286,
+        98.941,
+        99.438,
+        97.055
+      ]
+    },
+    "target-v3/release/volume": {
+      "main": [
+        2076.812,
+        2082.06,
+        2080.386,
+        2070.096,
+        2098.575
+      ]
+    },
+    "target-v3/release/ao": {
+      "ao": [
+        88.208,
+        88.488,
+        88.18,
+        88.218,
+        88.469
+      ]
+    },
+    "target-v3/release/rt": {
+      "main": [
+        36.753,
+        36.84,
+        36.806,
+        36.753,
+        36.827
+      ]
+    },
+    "target-native/release/mandelbrot": {
+      "export": [
+        4.735,
+        4.737,
+        4.758,
+        4.74,
+        4.747
+      ],
+      "direct": [
+        7.712,
+        7.709,
+        7.712,
+        7.711,
+        7.709
+      ]
+    },
+    "target-native/release/options": {
+      "black_scholes": [
+        0.4505,
+        0.4567,
+        0.4521,
+        0.4514,
+        0.4544
+      ],
+      "binomial_put": [
+        27.7076,
+        27.9361,
+        27.6902,
+        27.9205,
+        27.7025
+      ]
+    },
+    "target-native/release/stencil": {
+      "stencil": [
+        96.692,
+        97.957,
+        97.189,
+        97.493,
+        97.893
+      ]
+    },
+    "target-native/release/volume": {
+      "main": [
+        2130.648,
+        2130.019,
+        2122.017,
+        2133.263,
+        2133.103
+      ]
+    },
+    "target-native/release/ao": {
+      "ao": [
+        91.5,
+        91.343,
+        91.513,
+        91.424,
+        91.313
+      ]
+    },
+    "target-native/release/rt": {
+      "main": [
+        36.92,
+        36.865,
+        36.901,
+        36.869,
+        36.929
+      ]
+    },
+    "bench_mandel_a": {
+      "mandelbrot_ispc": [
+        8.225,
+        8.227,
+        8.222,
+        8.224,
+        8.23
+      ],
+      "mandelbrot_serial": [
+        47.052,
+        47.054,
+        47.046,
+        47.045,
+        47.049
+      ]
+    },
+    "bench_mandel_b": {
+      "mandelbrot_ispc": [
+        5.966,
+        5.967,
+        5.97,
+        5.972,
+        5.97
+      ],
+      "mandelbrot_serial": [
+        47.015,
+        47.011,
+        47.012,
+        47.031,
+        47.025
+      ]
+    },
+    "bench_options_a": {
+      "black_scholes_ispc": [
+        0.3375,
+        0.3403,
+        0.3379,
+        0.3381,
+        0.3395
+      ],
+      "binomial_put_ispc": [
+        28.4931,
+        28.4753,
+        28.4726,
+        28.4968,
+        28.395
+      ],
+      "black_scholes_serial": [
+        2.3788,
+        2.3789,
+        2.3773,
+        2.3833,
+        2.1147
+      ],
+      "binomial_put_serial": [
+        94.3991,
+        94.7127,
+        94.5044,
+        94.6873,
+        94.8145
+      ]
+    },
+    "bench_options_b": {
+      "black_scholes_ispc": [
+        0.2282,
+        0.2293,
+        0.2283,
+        0.2276,
+        0.2278
+      ],
+      "binomial_put_ispc": [
+        24.4927,
+        24.4929,
+        24.4917,
+        24.4848,
+        24.4931
+      ],
+      "black_scholes_serial": [
+        2.3989,
+        2.3949,
+        2.4012,
+        2.405,
+        2.4043
+      ],
+      "binomial_put_serial": [
+        173.4408,
+        173.5755,
+        174.2507,
+        174.4757,
+        173.6962
+      ]
+    },
+    "bench_stencil_a": {
+      "stencil_ispc": [
+        86.563,
+        87.27,
+        87.324,
+        87.337,
+        87.73
+      ],
+      "stencil_serial": [
+        110.628,
+        112.552,
+        111.518,
+        113.526,
+        111.953
+      ]
+    },
+    "bench_stencil_b": {
+      "stencil_ispc": [
+        83.903,
+        85.391,
+        85.452,
+        85.538,
+        84.988
+      ],
+      "stencil_serial": [
+        256.243,
+        261.0,
+        254.01,
+        256.985,
+        252.86
+      ]
+    },
+    "bench_volume_a": {
+      "serial": [
+        3895.34,
+        3894.212,
+        3913.323,
+        3910.941,
+        3895.132
+      ],
+      "ispc": [
+        1518.14,
+        1634.477,
+        1523.847,
+        1518.721,
+        1518.29
+      ]
+    },
+    "bench_volume_b": {
+      "serial": [
+        3739.422,
+        3744.011,
+        3740.188,
+        3747.55,
+        3749.097
+      ],
+      "ispc": [
+        1211.311,
+        1213.426,
+        1208.362,
+        1236.986,
+        1210.51
+      ]
+    },
+    "bench_ao_a": {
+      "ispc": [
+        164.797,
+        164.624,
+        164.887,
+        164.493,
+        164.815
+      ],
+      "serial": [
+        991.807,
+        961.948,
+        961.494,
+        962.302,
+        961.903
+      ]
+    },
+    "bench_ao_b": {
+      "ispc": [
+        129.448,
+        129.276,
+        129.259,
+        129.912,
+        131.077
+      ],
+      "serial": [
+        959.944,
+        959.44,
+        957.695,
+        959.63,
+        957.669
+      ]
+    },
+    "bench_rt_a": {
+      "serial": [
+        151.763,
+        151.883,
+        151.043,
+        151.52,
+        151.839
+      ],
+      "ispc": [
+        34.613,
+        34.628,
+        34.449,
+        34.67,
+        34.601
+      ]
+    },
+    "bench_rt_b": {
+      "serial": [
+        185.029,
+        184.197,
+        184.239,
+        185.04,
+        184.323
+      ],
+      "ispc": [
+        25.715,
+        25.95,
+        25.94,
+        25.932,
+        25.94
+      ]
+    }
+  }
+}

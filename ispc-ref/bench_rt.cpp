@@ -223,7 +223,7 @@ static void raytrace_serial(int width, int height, int baseWidth, int baseHeight
 // Scene loaders (adapted from ISPC rt.cpp main()) + benchmark harness
 // ---------------------------------------------------------------------------
 #ifndef SCENE_BASE
-#define SCENE_BASE "/Users/byeongjee/side/rust-ispc/ispc-bench/sponza"
+#define SCENE_BASE "../ispc-bench/sponza"
 #endif
 
 #define READ(var, n)                                                                                                   \

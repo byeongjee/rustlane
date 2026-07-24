@@ -282,9 +282,9 @@ fn volume_render(
 }
 
 
-const CAMERA_PATH: &str = "/Users/byeongjee/side/rust-ispc/ispc-bench/camera.dat";
-const VOLUME_PATH: &str = "/Users/byeongjee/side/rust-ispc/ispc-bench/density_lowres.vol";
-const REF_PATH: &str = "/Users/byeongjee/side/rust-ispc/ispc-ref/ref-out/volume.bin";
+const CAMERA_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../ispc-bench/camera.dat");
+const VOLUME_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../ispc-bench/density_lowres.vol");
+const REF_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../ispc-ref/ref-out/volume.bin");
 
 fn load_camera() -> (usize, usize, Vec<f32>, Vec<f32>) {
     let text = std::fs::read_to_string(CAMERA_PATH).expect("read camera.dat");

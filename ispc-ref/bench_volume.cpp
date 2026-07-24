@@ -19,10 +19,10 @@
 #include <cstdio>
 #include <cstdlib>
 
-// Absolute data paths (loaders in the upstream example use relative paths;
-// hardcoding keeps the benchmark runnable from any directory).
-static const char *kCameraPath = "/Users/byeongjee/side/rust-ispc/ispc-bench/camera.dat";
-static const char *kVolumePath = "/Users/byeongjee/side/rust-ispc/ispc-bench/density_lowres.vol";
+// Data paths relative to the ispc-ref working directory (where the harness
+// runs the benchmark binaries from; see measure.sh and the Makefile refs rule).
+static const char *kCameraPath = "../ispc-bench/camera.dat";
+static const char *kVolumePath = "../ispc-bench/density_lowres.vol";
 
 extern "C" void volume_ispc(float *density, int32_t *nVoxels,
                             const float raster2camera[][4],

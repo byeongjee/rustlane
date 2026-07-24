@@ -235,7 +235,7 @@ fn ao_render(w: i32, h: i32, ns: i32, image: &mut [f32]) {
 }
 
 
-const REF_PATH: &str = "/Users/byeongjee/side/rust-ispc/ispc-ref/ref-out/ao_ispc.bin";
+const REF_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../ispc-ref/ref-out/ao_ispc.bin");
 const REF_CHECKSUM: f64 = 365161.535156;
 
 fn load_ref(n: usize) -> Option<Vec<f32>> {
