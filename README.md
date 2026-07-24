@@ -159,21 +159,6 @@ Nightly is required and will stay required: `Varying<T, N>` is built on
 - **Explicit generic arguments on a kernel call** (`k::<8>(x)`). The macro
   supplies `::<N, _>` itself.
 
-## TODO
-
-Language:
-
-- [ ] `foreach_3d!` / `foreach_4d!`
-- [ ] Kernel calls through a qualified path
-- [ ] User type / const generics on a kernel
-- [ ] Uniform (`bool`) `while` conditions
-
-Performance:
-
-- [ ] x86-64 against `avx512skx-i32x16`: black_scholes 2.00×, volume 1.71×, rt 1.42×
-- [ ] aarch64 black_scholes runs under 1 ms; the confidence interval is too wide
-      to read. Needs more reps or a larger workload.
-
 ## Static safety
 
 The dangerous SPMD mistakes are compile errors, not silent races. Assigning to
