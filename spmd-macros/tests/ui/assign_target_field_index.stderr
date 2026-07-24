@@ -1,0 +1,5 @@
+error: unsupported assignment target in #[kernel]: supported forms are `x = v`, `x.field = v`, `*p = v` and `a[i] = v`; for `a[i].field = v`, read-modify-write a local instead: `let mut t = a[i]; t.field = v; a[i] = t`
+  --> tests/ui/assign_target_field_index.rs:14:5
+   |
+14 |     out[idx].a = 1;
+   |     ^^^^^^^^^^

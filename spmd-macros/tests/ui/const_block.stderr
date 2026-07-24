@@ -1,0 +1,5 @@
+error: `const` blocks are not supported in #[kernel]
+ --> tests/ui/const_block.rs:8:13
+  |
+8 |     let k = const { 2 + 2 };
+  |             ^^^^^^^^^^^^^^^

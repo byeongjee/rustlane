@@ -1,0 +1,5 @@
+error: #[kernel] fns cannot have an ABI
+ --> tests/ui/extern_abi.rs:7:1
+  |
+7 | extern "C" fn bad(x: Varying<i32>) -> Varying<i32> {
+  | ^^^^^^^^^^

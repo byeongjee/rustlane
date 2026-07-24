@@ -1,0 +1,5 @@
+error: destructuring `let` patterns are not supported in #[kernel]; bind a single identifier
+ --> tests/ui/destructure_let.rs:8:9
+  |
+8 |     let (a, b) = (x, x + 1);
+  |         ^^^^^^

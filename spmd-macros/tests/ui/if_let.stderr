@@ -1,0 +1,5 @@
+error: `if let`/`while let` are not supported in #[kernel]; use plain conditions
+ --> tests/ui/if_let.rs:9:8
+  |
+9 |     if let Some(v) = o {
+  |        ^^^^^^^^^^^^^^^

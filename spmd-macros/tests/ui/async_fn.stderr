@@ -1,0 +1,5 @@
+error: #[kernel] fns cannot be `async`
+ --> tests/ui/async_fn.rs:7:1
+  |
+7 | async fn bad(x: Varying<i32>) -> Varying<i32> {
+  | ^^^^^

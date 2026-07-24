@@ -1,0 +1,5 @@
+error: `_` expressions are not supported in #[kernel]
+ --> tests/ui/underscore_expr.rs:9:13
+  |
+9 |     let y = _;
+  |             ^

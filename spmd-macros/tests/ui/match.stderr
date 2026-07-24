@@ -1,0 +1,7 @@
+error: `match` is not supported in #[kernel] v1 (including on uniform values); rewrite as an if/else chain
+  --> tests/ui/match.rs:9:5
+   |
+ 9 | /     match x {
+10 | |         _ => r = 1,
+11 | |     }
+   | |_____^

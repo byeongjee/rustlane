@@ -1,0 +1,5 @@
+error: `ident @ pattern` bindings are not supported in #[kernel]
+ --> tests/ui/ident_at_pattern.rs:8:9
+  |
+8 |     let whole @ inner = x + 1;
+  |         ^^^^^^^^^^^^^

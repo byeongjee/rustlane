@@ -1,0 +1,5 @@
+error: `self` is only allowed in #[kernel] impl blocks
+ --> tests/ui/self_in_free_fn.rs:8:8
+  |
+8 | fn bad(self, x: Varying<i32>) -> Varying<i32> {
+  |        ^^^^

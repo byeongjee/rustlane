@@ -1,0 +1,5 @@
+error: #[spmd::kernel] impl blocks must be inherent impls (trait impls would change the trait's method signatures)
+  --> tests/ui/trait_impl.rs:12:6
+   |
+12 | impl Doubler for Ops {
+   |      ^^^^^^^

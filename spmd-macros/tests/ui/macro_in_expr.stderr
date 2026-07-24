@@ -1,0 +1,5 @@
+error: macro calls are not supported in #[kernel] expressions; allowed kernel macros: `foreach!`, `foreach_2d!`, `foreach_tiled!`, `unmasked!`, `cif!`, `cwhile!` (statement position only)
+  --> tests/ui/macro_in_expr.rs:10:13
+   |
+10 |     let k = vec![1, 2, 3];
+   |             ^^^^^^^^^^^^^

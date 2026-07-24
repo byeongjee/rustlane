@@ -1,0 +1,5 @@
+error: attributes on kernel statements are not supported
+ --> tests/ui/attr_on_stmt.rs:9:5
+  |
+9 |     #[allow(clippy::all)]
+  |     ^^^^^^^^^^^^^^^^^^^^^

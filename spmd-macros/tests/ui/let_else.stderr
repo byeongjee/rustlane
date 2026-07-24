@@ -1,0 +1,5 @@
+error: `let ... else` is not supported in #[kernel]
+ --> tests/ui/let_else.rs:8:15
+  |
+8 |     let v = o else {
+  |               ^^^^

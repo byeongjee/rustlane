@@ -1,0 +1,11 @@
+error: identifiers starting with `__` are reserved by #[kernel] machinery
+  --> tests/ui/reserved_assign_target.rs:15:5
+   |
+15 |     __ret = x + 1000;
+   |     ^^^^^
+
+error: identifiers starting with `__` are reserved by #[kernel] machinery
+  --> tests/ui/reserved_assign_target.rs:16:5
+   |
+16 |     __exec += 1;
+   |     ^^^^^^

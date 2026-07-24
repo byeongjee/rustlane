@@ -27,7 +27,7 @@ fn mandel(c_re: Varying<f32>, c_im: Varying<f32>, count: i32) -> Varying<i32> {
 }
 
 #[export]
-fn mandelbrot_render(
+fn mandelbrot_export(
     x0: f32,
     y0: f32,
     x1: f32,
@@ -88,7 +88,7 @@ fn main() {
     let mut best_exp = f64::INFINITY;
     for _ in 0..reps {
         let t0 = Instant::now();
-        mandelbrot_render(-2.0, -1.0, 1.0, 1.0, width, height, max_iter, &mut buf_exp);
+        mandelbrot_export(-2.0, -1.0, 1.0, 1.0, width, height, max_iter, &mut buf_exp);
         let dt = t0.elapsed().as_secs_f64() * 1e3;
         if dt < best_exp {
             best_exp = dt;
@@ -109,14 +109,14 @@ fn main() {
     let sum_exp = checksum(&buf_exp);
     let sum_ref = checksum(&buf_ref);
     println!(
-        "mandelbrot(export,N={}):  {:.3} ms  (checksum {})",
+        "mandelbrot_export(N={}): exported {:.3} ms  (checksum {})",
         LANES, best_exp, sum_exp
     );
     println!(
-        "mandelbrot(direct,N={}):  {:.3} ms  (checksum {})",
+        "mandelbrot_export(N={}): non-export {:.3} ms  (checksum {})",
         LANES, best_ref, sum_ref
     );
     assert_eq!(sum_exp, 27304085, "exported checksum mismatch");
-    assert_eq!(sum_exp, sum_ref, "exported vs direct checksum mismatch");
-    println!("mandelbrot: OK (checksum 27304085, export == direct)");
+    assert_eq!(sum_exp, sum_ref, "exported vs non-exported checksum mismatch");
+    println!("mandelbrot_export: OK (checksum 27304085, exported == non-exported)");
 }

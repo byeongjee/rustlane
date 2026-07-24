@@ -1,0 +1,7 @@
+error: item definitions inside #[kernel] bodies are not supported
+  --> tests/ui/item_in_body.rs:8:5
+   |
+ 8 | /     fn helper() -> i32 {
+ 9 | |         3
+10 | |     }
+   | |_____^

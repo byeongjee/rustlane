@@ -1,0 +1,5 @@
+error: `break` with a value is not supported in #[kernel]
+  --> tests/ui/break_with_value.rs:12:19
+   |
+12 |             break c;
+   |                   ^

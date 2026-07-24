@@ -1,0 +1,5 @@
+error: `.await` is not supported in #[kernel]
+ --> tests/ui/await.rs:8:13
+  |
+8 |     let y = x.await;
+  |             ^^^^^^^

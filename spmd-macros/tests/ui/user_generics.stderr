@@ -1,0 +1,5 @@
+error: #[kernel] fns cannot declare their own type/const generics in v1 (the macro owns `const N: usize` and the exec parameter)
+ --> tests/ui/user_generics.rs:9:8
+  |
+9 | fn bad<T>(x: Varying<i32>) -> Varying<i32> {
+  |        ^

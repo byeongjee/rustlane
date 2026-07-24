@@ -6,6 +6,7 @@ pub mod math;
 pub mod memory;
 pub mod reduce;
 pub mod rng;
+pub mod value;
 pub mod varying;
 
 pub use cond::{SpmdAnd, SpmdEq, SpmdNot, SpmdOr, SpmdOrd};
@@ -14,6 +15,7 @@ pub use exec::{
     Refresh, SpmdLoop, UniformLoop, VMask, VMaskGuard, VaryingLoop,
 };
 pub use memory::{ActiveMask, LinearIndex, SpmdRead, SpmdWrite};
+pub use value::{SpmdGather, SpmdValue};
 pub use varying::{SpmdCast, SpmdCastElement, Varying, NATIVE_LANES};
 
 pub mod prelude {
@@ -23,6 +25,7 @@ pub mod prelude {
         MaskedAssign, Refresh, SpmdLoop, UniformLoop, VMask, VMaskGuard, VaryingLoop,
     };
     pub use crate::memory::{ActiveMask, LinearIndex, SpmdRead, SpmdWrite};
+    pub use crate::value::{SpmdGather, SpmdValue};
     pub use crate::varying::{SpmdCast, SpmdCastElement, Varying, NATIVE_LANES};
     pub use crate::{math, memory, reduce, rng};
 }

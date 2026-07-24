@@ -1,4 +1,7 @@
 #![feature(portable_simd)]
+
+pub use spmd_macros::{
+    cif, cwhile, export, foreach, foreach_2d, foreach_tiled, kernel, unmasked, SpmdValue,
+};
+
 pub use spmd_core::*;
-#[allow(unused_imports)]
-pub use spmd_macros::*;

@@ -1,0 +1,5 @@
+error: destructuring `for` patterns are not supported in #[kernel]; bind a single identifier
+ --> tests/ui/destructure_for.rs:9:9
+  |
+9 |     for (a, b) in [(1, 2), (3, 4)] {
+  |         ^^^^^^

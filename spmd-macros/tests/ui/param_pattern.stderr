@@ -1,0 +1,5 @@
+error: #[kernel] parameters must be plain identifiers
+ --> tests/ui/param_pattern.rs:8:8
+  |
+8 | fn bad((a, b): (i32, i32)) -> Varying<i32> {
+  |        ^^^^^^

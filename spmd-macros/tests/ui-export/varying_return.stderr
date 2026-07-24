@@ -1,0 +1,5 @@
+error: `Varying` cannot appear in an #[spmd::export] signature: its in-memory width is chosen by the runtime target dispatcher, so it cannot cross the export boundary. Take scalars / `&[T]` / `&mut [T]` and iterate with `foreach!` inside the body (each lane's varying data stays within one target's width).
+ --> tests/ui-export/varying_return.rs:9:19
+  |
+9 | fn bad(n: i32) -> Varying<i32> {
+  |                   ^^^^^^^

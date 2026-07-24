@@ -1,0 +1,5 @@
+error: `break` outside of a loop
+ --> tests/ui/break_outside_loop.rs:9:9
+  |
+9 |         break;
+  |         ^^^^^

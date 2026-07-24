@@ -1,0 +1,5 @@
+error: `?` is not supported in #[kernel]
+ --> tests/ui/question_mark.rs:8:13
+  |
+8 |     let y = x?;
+  |             ^^

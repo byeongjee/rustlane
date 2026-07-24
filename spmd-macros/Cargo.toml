@@ -10,3 +10,13 @@ proc-macro = true
 syn = { version = "2", features = ["full", "visit-mut", "extra-traits"] }
 quote = "1"
 proc-macro2 = "1"
+
+# `trybuild` drives the compile-fail UI suite (tests/ui.rs, tests/ui-export.rs).
+# The `spmd` dev-dependency closes a cycle (spmd -> spmd-macros as a normal
+# dep); cargo permits it because the back-edge is a DEV dependency, used only
+# when building spmd-macros' own tests. The UI kernels need the real runtime
+# (`::spmd::…` paths the macro emits, plus the `on_unimplemented` traits) in
+# scope to exercise the type-level rejections.
+[dev-dependencies]
+trybuild = "1"
+spmd = { path = "../spmd" }

@@ -1,0 +1,5 @@
+error: passing `&mut` to a non-kernel function is not supported in #[kernel] (masked lanes could be observed mid-update); pass `&mut` slices to #[kernel] fns only
+  --> tests/ui/mut_to_nonkernel.rs:11:19
+   |
+11 |     helpers::stir(&mut acc);
+   |                   ^^^^^^^^

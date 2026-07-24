@@ -1,0 +1,5 @@
+error: unknown macro inside #[kernel]; allowed kernel macros: `foreach!`, `foreach_2d!`, `foreach_tiled!`, `unmasked!`, `cif!`, `cwhile!`
+ --> tests/ui/unknown_macro.rs:8:5
+  |
+8 |     println!("{}", 1);
+  |     ^^^^^^^

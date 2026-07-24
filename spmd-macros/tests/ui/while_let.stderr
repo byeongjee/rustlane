@@ -1,0 +1,5 @@
+error: `while let` is not supported in #[kernel]; use a plain condition
+ --> tests/ui/while_let.rs:9:11
+  |
+9 |     while let Some(v) = o {
+  |           ^^^^^^^^^^^^^^^

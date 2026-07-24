@@ -1,0 +1,5 @@
+error: closures are not supported in #[kernel]; use `foreach!` for iteration and plain kernel calls for abstraction
+ --> tests/ui/closure.rs:8:13
+  |
+8 |     let f = |v: Varying<i32>| v + 1;
+  |             ^^^^^^^^^^^^^^^^^^^^^^^

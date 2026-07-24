@@ -1,0 +1,5 @@
+error: `break` cannot cross a `foreach!`/`unmasked!` boundary in #[kernel]: the block body is a barrier; it may only target a loop fully inside it
+  --> tests/ui/break_crosses_foreach.rs:14:13
+   |
+14 |             break;
+   |             ^^^^^

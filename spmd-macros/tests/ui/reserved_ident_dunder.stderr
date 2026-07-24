@@ -1,0 +1,11 @@
+error: identifiers starting with `__` are reserved by #[kernel] machinery
+ --> tests/ui/reserved_ident_dunder.rs:9:9
+  |
+9 |     let __tmp = x + 1;
+  |         ^^^^^
+
+error: identifiers starting with `__` are reserved by #[kernel] machinery
+  --> tests/ui/reserved_ident_dunder.rs:10:5
+   |
+10 |     __tmp
+   |     ^^^^^
