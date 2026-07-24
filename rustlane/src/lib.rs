@@ -23,22 +23,6 @@
 //! #[kernel]
 //! fn square(x: Varying<f32>) -> Varying<f32> { x * x }
 //! ```
-//!
-//! # Building on x86-64
-//!
-//! Kernels operate on 8-lane vectors. The x86-64 baseline ISA is only SSE2
-//! (128-bit), so a *default* build lowers each 8-lane operation to a pair of
-//! SSE instructions and runs well below par. Enable AVX2 — e.g. with a
-//! `.cargo/config.toml`:
-//!
-//! ```toml
-//! [target.'cfg(target_arch = "x86_64")']
-//! rustflags = ["-C", "target-cpu=x86-64-v3"]  # AVX2 + FMA
-//! ```
-//!
-//! `target-cpu=native` is not worth it: AVX-512VL buys the fixed 8-wide code
-//! nothing — and can slightly regress it — on current hardware. aarch64/NEON
-//! needs no flag; NEON is the baseline ISA there.
 #![feature(portable_simd)]
 
 pub use rustlane_macros::{

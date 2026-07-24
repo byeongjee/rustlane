@@ -66,15 +66,6 @@ channel = "nightly"
 rustlane = { path = "path/to/rustlane" }
 ```
 
-On x86-64 also enable AVX2, or the 8-lane vectors lower to paired SSE2 and run
-well below the benchmark numbers. aarch64/NEON needs no flag.
-
-```toml
-# .cargo/config.toml
-[target.'cfg(target_arch = "x86_64")']
-rustflags = ["-C", "target-cpu=x86-64-v3"]   # AVX2 + FMA
-```
-
 A `#[kernel]` is the per-lane program; an `#[export]` is the all-uniform entry
 point that drives it with `foreach!` and is callable as an ordinary safe Rust
 function:
@@ -106,30 +97,38 @@ fn main() {
 
 ## Performance
 
-Geometric mean of rustlane / ISPC runtime at the same gang width across 7
-kernels of ISPC's own example suite: **0.82** on Apple M2 Pro / NEON (rustlane
-~18% faster), **0.99** on AMD Zen4 / AVX2 (parity). The NEON table follows; x86
-numbers, methodology, and correctness validation are in
-[PERFORMANCE.md](PERFORMANCE.md).
+Seven kernels from ISPC's own example suite (`options` contributes two),
+measured against Intel ISPC on two machines. `#[export]` dispatches to the
+widest target the CPU supports — 8 lanes on the M2 Pro, 16 on the Zen4 box —
+and the ISPC target at that same width is the orange bar.
 
-The C++ baseline is split into a scalar floor (`-fno-vectorize`) and
-auto-vectorized C++ (`-O3`). For stencil the auto-vectorizer alone is 3.1×; for
-mandelbrot/ao/rt it does essentially nothing.
+![aarch64 benchmark](docs/bench-aarch64.png)
 
-| Kernel | scalar | C++ auto-vec | ISPC neon-i32x4 | ISPC neon-i32x8 | rustlane | rustlane / ISPC-best |
-|---|---:|---:|---:|---:|---:|---:|
-| mandelbrot | 77.4 ms | 77.3 ms | 26.1 ms | 14.7 ms | **12.3 ms** | **0.84** |
-| options: black_scholes | 1.57 ms | 1.31 ms | 0.58 ms | 0.52 ms | **0.52 ms** | **0.99** |
-| options: binomial_put | 159.7 ms | 126.5 ms | 43.0 ms | 26.3 ms | 27.0 ms | 1.03 |
-| stencil | 339.9 ms | 108.9 ms | 109.9 ms | 101.7 ms | **94.7 ms** | **0.93** |
-| volume | 3205 ms | 3112 ms | 2267 ms | 1947 ms | 2198 ms | 1.13 |
-| ao | 888.2 ms | 891.9 ms | 450.0 ms | 377.9 ms | **192.2 ms** | **0.51** |
-| rt | 306.5 ms | 306.7 ms | 102.9 ms | 91.7 ms | **50.4 ms** | **0.55** |
+![x86-64 benchmark](docs/bench-x86_64.png)
 
-> Caveat: `ao` and `rt` gain partly from a different lane-to-work mapping
-> (rustlane's `foreach` forms are 1-D/2-D, not ISPC's 4-D tile), not from
-> codegen alone, and `volume` is a ~13% loss to the cost of memory-safe
-> gathers.
+Geometric mean of rustlane / ISPC runtime at matched width:
+
+| Machine | rustlane | ISPC | ratio |
+|---|---|---|---:|
+| Apple M2 Pro | 8 lanes | `neon-i32x8` | **0.83** |
+| AMD Ryzen 9 7900X (Zen4) | 16 lanes | `avx512skx-i32x16` | **1.16** |
+
+Each round is 3 warm-up reps plus an internal min-of-15 (mandelbrot: 20); five
+rounds run interleaved over every binary in a fixed order with 2 s cool-downs.
+Bars are the mean over the five rounds, whiskers a 95% t interval. Every round
+validated its output against the ISPC reference. Full toolchain versions are
+printed under each chart; per-round raw timings land in `results/<arch>.csv`.
+
+The C++ columns are the same source at `-O3`; `scalar` adds
+`-fno-vectorize -fno-slp-vectorize`.
+
+```sh
+make -C ispc-ref build-all       # ISPC + C++ baselines (needs ispc, clang++)
+cargo build --release
+./rustlane-bench/measure.sh      # ~25 min
+python3 rustlane-bench/parse_measurements.py aarch64   # or x86_64
+python3 rustlane-bench/make_charts.py aarch64          # or x86_64
+```
 
 ## Feature matrix
 
@@ -191,8 +190,6 @@ unconditional coherence guards — the one `any()` reduction per loop is the loo
 exit check, not a per-`if` tax. The whole kernel tree is `#[inline(always)]`, so
 `#[export]` can stamp it out once per SIMD target inside a `#[target_feature]`
 shim and pick the widest at runtime with a single cached indirect call.
-
-See [PERFORMANCE.md](PERFORMANCE.md) for measured results and methodology.
 
 ## License
 

@@ -9,12 +9,6 @@ ARCH=$(uname -m); case "$ARCH" in arm64) ARCH=aarch64;; esac
 LOG="rustlane-bench/measure-log.$ARCH.txt"
 : > "$LOG"
 
-# rustlane build dirs: one on aarch64, two (v3 + native) on x86.
-if [ "$ARCH" = x86_64 ]; then
-  RL_DIRS="target-v3/release target-native/release"
-else
-  RL_DIRS="target/release"
-fi
 STEMS="mandel options stencil volume ao rt"
 RLBINS="mandelbrot options stencil volume ao rt"
 
@@ -30,9 +24,7 @@ run() { # round, workdir, binary
 
 for r in 1 2 3 4 5; do
   echo "### ---- ROUND $r ----" >> "$LOG"
-  for d in $RL_DIRS; do
-    for k in $RLBINS; do run $r . "$d/$k"; done
-  done
+  for k in $RLBINS; do run $r . "target/release/$k"; done
   for s in $STEMS; do
     run $r ispc-ref "bench_${s}_a"
     run $r ispc-ref "bench_${s}_b"

@@ -21,3 +21,4 @@ ispc-bench/stencil
 ispc-bench/volume
 rustlane-core/LOWERING.md
 CLAUDE.md
+results/

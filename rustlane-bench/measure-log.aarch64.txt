@@ -1,33 +1,33 @@
 ### ---- ROUND 1 ----
 ### round=1 bin=target/release/mandelbrot
-mandelbrot(export,N=8):  12.378 ms  (checksum 27304085)
-mandelbrot(direct,N=8):  12.314 ms  (checksum 27304085)
+mandelbrot(export,N=8):  12.296 ms  (checksum 27304085)
+mandelbrot(direct,N=8):  12.360 ms  (checksum 27304085)
 mandelbrot: OK (checksum 27304085, export == direct)
 ### exit=0
 ### round=1 bin=target/release/options
 CHECKSUM 25446351.000000
-MS black_scholes 0.5843
-MS binomial_put 26.9598
+MS black_scholes 0.5161
+MS binomial_put 27.4339
 SUM bs=13102023.000000 binomial=12344328.000000
 VALIDATE bs: max_rel=0.000e0 mism=0/131072 (tol 1e-4)
 VALIDATE binomial: max_rel=0.000e0 mism=0/131072 (tol 1e-4)
 options: OK
 ### exit=0
 ### round=1 bin=target/release/stencil
-MS stencil 96.736
+MS stencil 95.245
 CHECKSUM 16983763.937203
 # validate: bit_exact=11947669/16777216, max_abs=4.435e-5, max_rel=9.562e-1, checksum_rel=1.088e-10 (ref_checksum=16983763.935355)
 stencil: OK (fma-tolerance vs stencil.bin; checksum_rel 1.09e-10, max_abs 4.43e-5)
 ### exit=0
 ### round=1 bin=target/release/volume
-MS 2197.617
+MS 2211.438
 CHECKSUM 109129.841793
 workload 896x1184 image, 48x64x48 volume
 VALIDATION ref_checksum=109129.838867 checksum_rel=2.681e-8 max_rel=8.978e-4 max_abs=6.615e-5 mismatches=0/1060864
 volume: OK
 ### exit=0
 ### round=1 bin=target/release/ao
-MS ao 192.831
+MS ao 192.942
 CHECKSUM ours 365243.449219 ref 365161.535156  (512x512 ns=2, N=8, range [0.000,1.000])
 VALIDATION checksum rel err 0.0224% vs ref_sum 365161.535 (documented 365161.535); per-pixel mean abs diff 0.00975, max abs diff 0.17969
 ao: OK (checksum rel err 0.0224% vs ref_sum 365161.535 (documented 365161.535); per-pixel mean abs diff 0.00975, max abs diff 0.17969)
@@ -35,122 +35,122 @@ ao: OK (checksum rel err 0.0224% vs ref_sum 365161.535 (documented 365161.535); 
 ### round=1 bin=target/release/rt
 rt scene: 900x900 image, 121149 BVH nodes, 66454 triangles
 CHECKSUM 7.1449470502e8
-MS 50.858
+MS 51.273
 validation: max_rel_err 0.000e0, mismatches 0 / 810000, checksum_rel 0.000e0
-rt: OK
+rt: OK (checksum_rel 0.00e0, 0 edge mismatches / 810000, max_rel 0.00e0)
 ### exit=0
 ### round=1 bin=bench_mandel_a
 # serial_checksum 27303605  diff 176
 CHECKSUM 27303781
-MS mandelbrot_ispc 26.306
-MS mandelbrot_serial 78.015
+MS mandelbrot_ispc 26.196
+MS mandelbrot_serial 78.348
 ### exit=0
 ### round=1 bin=bench_mandel_b
 # serial_checksum 27303605  diff 176
 CHECKSUM 27303781
-MS mandelbrot_ispc 14.723
-MS mandelbrot_serial 77.878
+MS mandelbrot_ispc 14.733
+MS mandelbrot_serial 78.114
 ### exit=0
 ### round=1 bin=bench_options_a
 CHECKSUM 25446351.000000
 CHECKSUM_SERIAL 25446379.000000
-MS black_scholes_ispc 0.9174
-MS binomial_put_ispc 43.3563
-MS black_scholes_serial 1.3119
-MS binomial_put_serial 127.0833
+MS black_scholes_ispc 0.7773
+MS binomial_put_ispc 43.7834
+MS black_scholes_serial 1.3604
+MS binomial_put_serial 127.8837
 SUM bs=13102023.000000 binomial=12344328.000000 (serial bs=13102023.000000 binomial=12344356.000000)
 ### exit=0
 ### round=1 bin=bench_options_b
 CHECKSUM 25446351.000000
 CHECKSUM_SERIAL 25446379.000000
-MS black_scholes_ispc 0.5487
-MS binomial_put_ispc 26.3118
-MS black_scholes_serial 1.5675
-MS binomial_put_serial 159.7328
+MS black_scholes_ispc 0.5562
+MS binomial_put_ispc 26.4018
+MS black_scholes_serial 1.6172
+MS binomial_put_serial 160.4899
 SUM bs=13102023.000000 binomial=12344328.000000 (serial bs=13102023.000000 binomial=12344356.000000)
 ### exit=0
 ### round=1 bin=bench_stencil_a
 # serial_checksum 16983763.935355  reldiff 0.000e+00
 CHECKSUM 16983763.935355
-MS stencil_ispc 113.371
-MS stencil_serial 108.881
+MS stencil_ispc 113.288
+MS stencil_serial 109.305
 ### exit=0
 ### round=1 bin=bench_stencil_b
 # serial_checksum 16983763.935355  reldiff 0.000e+00
 CHECKSUM 16983763.935355
-MS stencil_ispc 103.067
-MS stencil_serial 363.795
+MS stencil_ispc 102.158
+MS stencil_serial 358.261
 ### exit=0
 ### round=1 bin=bench_volume_a
 CHECKSUM serial 109129.838867
 CHECKSUM ispc 109129.843138
-MS serial 3111.588
-MS ispc 2268.301
+MS serial 3127.214
+MS ispc 2278.021
 workload 896x1184 image, 48x64x48 volume
 ### exit=0
 ### round=1 bin=bench_volume_b
 CHECKSUM serial 109129.838867
 CHECKSUM ispc 109129.843132
-MS serial 3212.288
-MS ispc 1947.057
+MS serial 3231.265
+MS ispc 1964.267
 workload 896x1184 image, 48x64x48 volume
 ### exit=0
 ### round=1 bin=bench_ao_a
 CHECKSUM ispc 365161.535156 serial 365323.546875  (512x512 ns=2, N=786432 floats)
-MS ispc 451.317
-MS serial 891.887
+MS ispc 450.673
+MS serial 901.539
 ### exit=0
 ### round=1 bin=bench_ao_b
 CHECKSUM ispc 365228.953125 serial 365323.546875  (512x512 ns=2, N=786432 floats)
-MS ispc 378.006
-MS serial 888.200
+MS ispc 380.693
+MS serial 897.944
 ### exit=0
 ### round=1 bin=bench_rt_a
 rt scene: 900x900 image, 121149 BVH nodes, 66454 triangles
 CHECKSUM_SERIAL 7.1449470502e+08
 CHECKSUM_ISPC   7.1449470165e+08
-MS_SERIAL 307.219
-MS_ISPC   103.412
+MS_SERIAL 307.649
+MS_ISPC   103.032
 rel_checksum_diff -4.709e-09
 ### exit=0
 ### round=1 bin=bench_rt_b
 rt scene: 900x900 image, 121149 BVH nodes, 66454 triangles
 CHECKSUM_SERIAL 7.1449470502e+08
 CHECKSUM_ISPC   7.1449470165e+08
-MS_SERIAL 315.112
-MS_ISPC   91.661
+MS_SERIAL 309.586
+MS_ISPC   92.583
 rel_checksum_diff -4.709e-09
 ### exit=0
 ### ---- ROUND 2 ----
 ### round=2 bin=target/release/mandelbrot
-mandelbrot(export,N=8):  12.291 ms  (checksum 27304085)
-mandelbrot(direct,N=8):  12.321 ms  (checksum 27304085)
+mandelbrot(export,N=8):  12.380 ms  (checksum 27304085)
+mandelbrot(direct,N=8):  12.282 ms  (checksum 27304085)
 mandelbrot: OK (checksum 27304085, export == direct)
 ### exit=0
 ### round=2 bin=target/release/options
 CHECKSUM 25446351.000000
-MS black_scholes 0.9199
-MS binomial_put 27.0083
+MS black_scholes 0.9240
+MS binomial_put 27.1706
 SUM bs=13102023.000000 binomial=12344328.000000
 VALIDATE bs: max_rel=0.000e0 mism=0/131072 (tol 1e-4)
 VALIDATE binomial: max_rel=0.000e0 mism=0/131072 (tol 1e-4)
 options: OK
 ### exit=0
 ### round=2 bin=target/release/stencil
-MS stencil 96.132
+MS stencil 95.933
 CHECKSUM 16983763.937203
 # validate: bit_exact=11947669/16777216, max_abs=4.435e-5, max_rel=9.562e-1, checksum_rel=1.088e-10 (ref_checksum=16983763.935355)
 stencil: OK (fma-tolerance vs stencil.bin; checksum_rel 1.09e-10, max_abs 4.43e-5)
 ### exit=0
 ### round=2 bin=target/release/volume
-MS 2204.364
+MS 2203.851
 CHECKSUM 109129.841793
 workload 896x1184 image, 48x64x48 volume
 VALIDATION ref_checksum=109129.838867 checksum_rel=2.681e-8 max_rel=8.978e-4 max_abs=6.615e-5 mismatches=0/1060864
 volume: OK
 ### exit=0
 ### round=2 bin=target/release/ao
-MS ao 193.021
+MS ao 193.584
 CHECKSUM ours 365243.449219 ref 365161.535156  (512x512 ns=2, N=8, range [0.000,1.000])
 VALIDATION checksum rel err 0.0224% vs ref_sum 365161.535 (documented 365161.535); per-pixel mean abs diff 0.00975, max abs diff 0.17969
 ao: OK (checksum rel err 0.0224% vs ref_sum 365161.535 (documented 365161.535); per-pixel mean abs diff 0.00975, max abs diff 0.17969)
@@ -158,122 +158,122 @@ ao: OK (checksum rel err 0.0224% vs ref_sum 365161.535 (documented 365161.535); 
 ### round=2 bin=target/release/rt
 rt scene: 900x900 image, 121149 BVH nodes, 66454 triangles
 CHECKSUM 7.1449470502e8
-MS 50.420
+MS 51.136
 validation: max_rel_err 0.000e0, mismatches 0 / 810000, checksum_rel 0.000e0
-rt: OK
+rt: OK (checksum_rel 0.00e0, 0 edge mismatches / 810000, max_rel 0.00e0)
 ### exit=0
 ### round=2 bin=bench_mandel_a
 # serial_checksum 27303605  diff 176
 CHECKSUM 27303781
-MS mandelbrot_ispc 26.134
-MS mandelbrot_serial 78.261
+MS mandelbrot_ispc 26.413
+MS mandelbrot_serial 78.217
 ### exit=0
 ### round=2 bin=bench_mandel_b
 # serial_checksum 27303605  diff 176
 CHECKSUM 27303781
-MS mandelbrot_ispc 14.668
-MS mandelbrot_serial 78.142
+MS mandelbrot_ispc 14.711
+MS mandelbrot_serial 77.397
 ### exit=0
 ### round=2 bin=bench_options_a
 CHECKSUM 25446351.000000
 CHECKSUM_SERIAL 25446379.000000
-MS black_scholes_ispc 0.9433
-MS binomial_put_ispc 43.5892
-MS black_scholes_serial 1.3366
-MS binomial_put_serial 127.1277
+MS black_scholes_ispc 1.0352
+MS binomial_put_ispc 43.5276
+MS black_scholes_serial 1.3446
+MS binomial_put_serial 125.8120
 SUM bs=13102023.000000 binomial=12344328.000000 (serial bs=13102023.000000 binomial=12344356.000000)
 ### exit=0
 ### round=2 bin=bench_options_b
 CHECKSUM 25446351.000000
 CHECKSUM_SERIAL 25446379.000000
-MS black_scholes_ispc 0.9344
-MS binomial_put_ispc 26.2734
-MS black_scholes_serial 1.5745
-MS binomial_put_serial 160.0565
+MS black_scholes_ispc 0.9377
+MS binomial_put_ispc 26.4034
+MS black_scholes_serial 1.5672
+MS binomial_put_serial 160.0813
 SUM bs=13102023.000000 binomial=12344328.000000 (serial bs=13102023.000000 binomial=12344356.000000)
 ### exit=0
 ### round=2 bin=bench_stencil_a
 # serial_checksum 16983763.935355  reldiff 0.000e+00
 CHECKSUM 16983763.935355
-MS stencil_ispc 114.456
-MS stencil_serial 113.277
+MS stencil_ispc 114.061
+MS stencil_serial 116.129
 ### exit=0
 ### round=2 bin=bench_stencil_b
 # serial_checksum 16983763.935355  reldiff 0.000e+00
 CHECKSUM 16983763.935355
-MS stencil_ispc 103.948
-MS stencil_serial 371.165
+MS stencil_ispc 103.117
+MS stencil_serial 337.959
 ### exit=0
 ### round=2 bin=bench_volume_a
 CHECKSUM serial 109129.838867
 CHECKSUM ispc 109129.843138
-MS serial 3126.668
-MS ispc 2279.864
+MS serial 3175.798
+MS ispc 2268.626
 workload 896x1184 image, 48x64x48 volume
 ### exit=0
 ### round=2 bin=bench_volume_b
 CHECKSUM serial 109129.838867
 CHECKSUM ispc 109129.843132
-MS serial 3223.555
-MS ispc 1958.882
+MS serial 3277.415
+MS ispc 2001.210
 workload 896x1184 image, 48x64x48 volume
 ### exit=0
 ### round=2 bin=bench_ao_a
 CHECKSUM ispc 365161.535156 serial 365323.546875  (512x512 ns=2, N=786432 floats)
-MS ispc 454.450
-MS serial 913.875
+MS ispc 457.184
+MS serial 914.498
 ### exit=0
 ### round=2 bin=bench_ao_b
 CHECKSUM ispc 365228.953125 serial 365323.546875  (512x512 ns=2, N=786432 floats)
-MS ispc 387.391
-MS serial 917.696
+MS ispc 384.544
+MS serial 912.052
 ### exit=0
 ### round=2 bin=bench_rt_a
 rt scene: 900x900 image, 121149 BVH nodes, 66454 triangles
 CHECKSUM_SERIAL 7.1449470502e+08
 CHECKSUM_ISPC   7.1449470165e+08
-MS_SERIAL 311.886
-MS_ISPC   105.969
+MS_SERIAL 307.671
+MS_ISPC   103.180
 rel_checksum_diff -4.709e-09
 ### exit=0
 ### round=2 bin=bench_rt_b
 rt scene: 900x900 image, 121149 BVH nodes, 66454 triangles
 CHECKSUM_SERIAL 7.1449470502e+08
 CHECKSUM_ISPC   7.1449470165e+08
-MS_SERIAL 318.152
-MS_ISPC   94.744
+MS_SERIAL 309.172
+MS_ISPC   92.674
 rel_checksum_diff -4.709e-09
 ### exit=0
 ### ---- ROUND 3 ----
 ### round=3 bin=target/release/mandelbrot
-mandelbrot(export,N=8):  12.443 ms  (checksum 27304085)
-mandelbrot(direct,N=8):  12.420 ms  (checksum 27304085)
+mandelbrot(export,N=8):  12.431 ms  (checksum 27304085)
+mandelbrot(direct,N=8):  12.362 ms  (checksum 27304085)
 mandelbrot: OK (checksum 27304085, export == direct)
 ### exit=0
 ### round=3 bin=target/release/options
 CHECKSUM 25446351.000000
-MS black_scholes 0.5267
-MS binomial_put 27.6074
+MS black_scholes 0.8348
+MS binomial_put 27.5440
 SUM bs=13102023.000000 binomial=12344328.000000
 VALIDATE bs: max_rel=0.000e0 mism=0/131072 (tol 1e-4)
 VALIDATE binomial: max_rel=0.000e0 mism=0/131072 (tol 1e-4)
 options: OK
 ### exit=0
 ### round=3 bin=target/release/stencil
-MS stencil 96.391
+MS stencil 93.663
 CHECKSUM 16983763.937203
 # validate: bit_exact=11947669/16777216, max_abs=4.435e-5, max_rel=9.562e-1, checksum_rel=1.088e-10 (ref_checksum=16983763.935355)
 stencil: OK (fma-tolerance vs stencil.bin; checksum_rel 1.09e-10, max_abs 4.43e-5)
 ### exit=0
 ### round=3 bin=target/release/volume
-MS 2251.562
+MS 2203.994
 CHECKSUM 109129.841793
 workload 896x1184 image, 48x64x48 volume
 VALIDATION ref_checksum=109129.838867 checksum_rel=2.681e-8 max_rel=8.978e-4 max_abs=6.615e-5 mismatches=0/1060864
 volume: OK
 ### exit=0
 ### round=3 bin=target/release/ao
-MS ao 192.357
+MS ao 191.922
 CHECKSUM ours 365243.449219 ref 365161.535156  (512x512 ns=2, N=8, range [0.000,1.000])
 VALIDATION checksum rel err 0.0224% vs ref_sum 365161.535 (documented 365161.535); per-pixel mean abs diff 0.00975, max abs diff 0.17969
 ao: OK (checksum rel err 0.0224% vs ref_sum 365161.535 (documented 365161.535); per-pixel mean abs diff 0.00975, max abs diff 0.17969)
@@ -281,122 +281,122 @@ ao: OK (checksum rel err 0.0224% vs ref_sum 365161.535 (documented 365161.535); 
 ### round=3 bin=target/release/rt
 rt scene: 900x900 image, 121149 BVH nodes, 66454 triangles
 CHECKSUM 7.1449470502e8
-MS 51.206
+MS 51.050
 validation: max_rel_err 0.000e0, mismatches 0 / 810000, checksum_rel 0.000e0
-rt: OK
+rt: OK (checksum_rel 0.00e0, 0 edge mismatches / 810000, max_rel 0.00e0)
 ### exit=0
 ### round=3 bin=bench_mandel_a
 # serial_checksum 27303605  diff 176
 CHECKSUM 27303781
-MS mandelbrot_ispc 26.381
-MS mandelbrot_serial 78.044
+MS mandelbrot_ispc 26.198
+MS mandelbrot_serial 78.049
 ### exit=0
 ### round=3 bin=bench_mandel_b
 # serial_checksum 27303605  diff 176
 CHECKSUM 27303781
-MS mandelbrot_ispc 14.830
-MS mandelbrot_serial 77.416
+MS mandelbrot_ispc 14.732
+MS mandelbrot_serial 77.374
 ### exit=0
 ### round=3 bin=bench_options_a
 CHECKSUM 25446351.000000
 CHECKSUM_SERIAL 25446379.000000
-MS black_scholes_ispc 0.5814
-MS binomial_put_ispc 44.2594
-MS black_scholes_serial 1.3128
-MS binomial_put_serial 129.8713
+MS black_scholes_ispc 0.7936
+MS binomial_put_ispc 43.4075
+MS black_scholes_serial 1.3545
+MS binomial_put_serial 126.1924
 SUM bs=13102023.000000 binomial=12344328.000000 (serial bs=13102023.000000 binomial=12344356.000000)
 ### exit=0
 ### round=3 bin=bench_options_b
 CHECKSUM 25446351.000000
 CHECKSUM_SERIAL 25446379.000000
-MS black_scholes_ispc 0.5248
-MS binomial_put_ispc 26.7634
-MS black_scholes_serial 1.5847
-MS binomial_put_serial 163.6800
+MS black_scholes_ispc 0.8427
+MS binomial_put_ispc 26.5401
+MS black_scholes_serial 1.5750
+MS binomial_put_serial 160.8144
 SUM bs=13102023.000000 binomial=12344328.000000 (serial bs=13102023.000000 binomial=12344356.000000)
 ### exit=0
 ### round=3 bin=bench_stencil_a
 # serial_checksum 16983763.935355  reldiff 0.000e+00
 CHECKSUM 16983763.935355
-MS stencil_ispc 112.282
-MS stencil_serial 115.475
+MS stencil_ispc 112.960
+MS stencil_serial 114.606
 ### exit=0
 ### round=3 bin=bench_stencil_b
 # serial_checksum 16983763.935355  reldiff 0.000e+00
 CHECKSUM 16983763.935355
-MS stencil_ispc 103.780
-MS stencil_serial 360.728
+MS stencil_ispc 103.432
+MS stencil_serial 367.932
 ### exit=0
 ### round=3 bin=bench_volume_a
 CHECKSUM serial 109129.838867
 CHECKSUM ispc 109129.843138
-MS serial 3159.069
-MS ispc 2304.187
+MS serial 3174.026
+MS ispc 2276.552
 workload 896x1184 image, 48x64x48 volume
 ### exit=0
 ### round=3 bin=bench_volume_b
 CHECKSUM serial 109129.838867
 CHECKSUM ispc 109129.843132
-MS serial 3237.274
-MS ispc 1976.328
+MS serial 3291.721
+MS ispc 1985.545
 workload 896x1184 image, 48x64x48 volume
 ### exit=0
 ### round=3 bin=bench_ao_a
 CHECKSUM ispc 365161.535156 serial 365323.546875  (512x512 ns=2, N=786432 floats)
-MS ispc 452.060
-MS serial 902.032
+MS ispc 459.337
+MS serial 907.705
 ### exit=0
 ### round=3 bin=bench_ao_b
 CHECKSUM ispc 365228.953125 serial 365323.546875  (512x512 ns=2, N=786432 floats)
-MS ispc 377.895
-MS serial 905.200
+MS ispc 380.692
+MS serial 910.764
 ### exit=0
 ### round=3 bin=bench_rt_a
 rt scene: 900x900 image, 121149 BVH nodes, 66454 triangles
 CHECKSUM_SERIAL 7.1449470502e+08
 CHECKSUM_ISPC   7.1449470165e+08
-MS_SERIAL 308.461
-MS_ISPC   103.059
+MS_SERIAL 306.689
+MS_ISPC   102.597
 rel_checksum_diff -4.709e-09
 ### exit=0
 ### round=3 bin=bench_rt_b
 rt scene: 900x900 image, 121149 BVH nodes, 66454 triangles
 CHECKSUM_SERIAL 7.1449470502e+08
 CHECKSUM_ISPC   7.1449470165e+08
-MS_SERIAL 306.457
-MS_ISPC   92.445
+MS_SERIAL 308.577
+MS_ISPC   92.534
 rel_checksum_diff -4.709e-09
 ### exit=0
 ### ---- ROUND 4 ----
 ### round=4 bin=target/release/mandelbrot
-mandelbrot(export,N=8):  12.374 ms  (checksum 27304085)
-mandelbrot(direct,N=8):  12.375 ms  (checksum 27304085)
+mandelbrot(export,N=8):  12.289 ms  (checksum 27304085)
+mandelbrot(direct,N=8):  12.319 ms  (checksum 27304085)
 mandelbrot: OK (checksum 27304085, export == direct)
 ### exit=0
 ### round=4 bin=target/release/options
 CHECKSUM 25446351.000000
-MS black_scholes 0.9269
-MS binomial_put 27.1161
+MS black_scholes 0.9285
+MS binomial_put 27.4965
 SUM bs=13102023.000000 binomial=12344328.000000
 VALIDATE bs: max_rel=0.000e0 mism=0/131072 (tol 1e-4)
 VALIDATE binomial: max_rel=0.000e0 mism=0/131072 (tol 1e-4)
 options: OK
 ### exit=0
 ### round=4 bin=target/release/stencil
-MS stencil 94.732
+MS stencil 97.389
 CHECKSUM 16983763.937203
 # validate: bit_exact=11947669/16777216, max_abs=4.435e-5, max_rel=9.562e-1, checksum_rel=1.088e-10 (ref_checksum=16983763.935355)
 stencil: OK (fma-tolerance vs stencil.bin; checksum_rel 1.09e-10, max_abs 4.43e-5)
 ### exit=0
 ### round=4 bin=target/release/volume
-MS 2198.433
+MS 2190.768
 CHECKSUM 109129.841793
 workload 896x1184 image, 48x64x48 volume
 VALIDATION ref_checksum=109129.838867 checksum_rel=2.681e-8 max_rel=8.978e-4 max_abs=6.615e-5 mismatches=0/1060864
 volume: OK
 ### exit=0
 ### round=4 bin=target/release/ao
-MS ao 192.275
+MS ao 193.047
 CHECKSUM ours 365243.449219 ref 365161.535156  (512x512 ns=2, N=8, range [0.000,1.000])
 VALIDATION checksum rel err 0.0224% vs ref_sum 365161.535 (documented 365161.535); per-pixel mean abs diff 0.00975, max abs diff 0.17969
 ao: OK (checksum rel err 0.0224% vs ref_sum 365161.535 (documented 365161.535); per-pixel mean abs diff 0.00975, max abs diff 0.17969)
@@ -404,122 +404,122 @@ ao: OK (checksum rel err 0.0224% vs ref_sum 365161.535 (documented 365161.535); 
 ### round=4 bin=target/release/rt
 rt scene: 900x900 image, 121149 BVH nodes, 66454 triangles
 CHECKSUM 7.1449470502e8
-MS 50.998
+MS 50.863
 validation: max_rel_err 0.000e0, mismatches 0 / 810000, checksum_rel 0.000e0
-rt: OK
+rt: OK (checksum_rel 0.00e0, 0 edge mismatches / 810000, max_rel 0.00e0)
 ### exit=0
 ### round=4 bin=bench_mandel_a
 # serial_checksum 27303605  diff 176
 CHECKSUM 27303781
-MS mandelbrot_ispc 26.330
-MS mandelbrot_serial 78.169
+MS mandelbrot_ispc 26.264
+MS mandelbrot_serial 77.716
 ### exit=0
 ### round=4 bin=bench_mandel_b
 # serial_checksum 27303605  diff 176
 CHECKSUM 27303781
-MS mandelbrot_ispc 14.829
-MS mandelbrot_serial 77.938
+MS mandelbrot_ispc 14.749
+MS mandelbrot_serial 77.423
 ### exit=0
 ### round=4 bin=bench_options_a
 CHECKSUM 25446351.000000
 CHECKSUM_SERIAL 25446379.000000
-MS black_scholes_ispc 0.9502
-MS binomial_put_ispc 43.0033
-MS black_scholes_serial 1.3505
-MS binomial_put_serial 128.2196
+MS black_scholes_ispc 1.0352
+MS binomial_put_ispc 43.1539
+MS black_scholes_serial 1.3519
+MS binomial_put_serial 126.1871
 SUM bs=13102023.000000 binomial=12344328.000000 (serial bs=13102023.000000 binomial=12344356.000000)
 ### exit=0
 ### round=4 bin=bench_options_b
 CHECKSUM 25446351.000000
 CHECKSUM_SERIAL 25446379.000000
-MS black_scholes_ispc 0.7213
-MS binomial_put_ispc 26.3889
-MS black_scholes_serial 1.6211
-MS binomial_put_serial 161.3906
+MS black_scholes_ispc 0.8640
+MS binomial_put_ispc 26.4657
+MS black_scholes_serial 1.5982
+MS binomial_put_serial 160.4660
 SUM bs=13102023.000000 binomial=12344328.000000 (serial bs=13102023.000000 binomial=12344356.000000)
 ### exit=0
 ### round=4 bin=bench_stencil_a
 # serial_checksum 16983763.935355  reldiff 0.000e+00
 CHECKSUM 16983763.935355
-MS stencil_ispc 109.903
-MS stencil_serial 114.960
+MS stencil_ispc 115.027
+MS stencil_serial 116.538
 ### exit=0
 ### round=4 bin=bench_stencil_b
 # serial_checksum 16983763.935355  reldiff 0.000e+00
 CHECKSUM 16983763.935355
-MS stencil_ispc 102.995
-MS stencil_serial 339.945
+MS stencil_ispc 103.026
+MS stencil_serial 367.142
 ### exit=0
 ### round=4 bin=bench_volume_a
 CHECKSUM serial 109129.838867
 CHECKSUM ispc 109129.843138
-MS serial 3126.001
-MS ispc 2280.058
+MS serial 3180.198
+MS ispc 2291.272
 workload 896x1184 image, 48x64x48 volume
 ### exit=0
 ### round=4 bin=bench_volume_b
 CHECKSUM serial 109129.838867
 CHECKSUM ispc 109129.843132
-MS serial 3204.561
-MS ispc 1954.190
+MS serial 3267.887
+MS ispc 1992.411
 workload 896x1184 image, 48x64x48 volume
 ### exit=0
 ### round=4 bin=bench_ao_a
 CHECKSUM ispc 365161.535156 serial 365323.546875  (512x512 ns=2, N=786432 floats)
-MS ispc 449.989
-MS serial 892.380
+MS ispc 454.295
+MS serial 914.970
 ### exit=0
 ### round=4 bin=bench_ao_b
 CHECKSUM ispc 365228.953125 serial 365323.546875  (512x512 ns=2, N=786432 floats)
-MS ispc 380.199
-MS serial 900.167
+MS ispc 382.618
+MS serial 914.577
 ### exit=0
 ### round=4 bin=bench_rt_a
 rt scene: 900x900 image, 121149 BVH nodes, 66454 triangles
 CHECKSUM_SERIAL 7.1449470502e+08
 CHECKSUM_ISPC   7.1449470165e+08
-MS_SERIAL 315.369
-MS_ISPC   104.112
+MS_SERIAL 308.700
+MS_ISPC   103.026
 rel_checksum_diff -4.709e-09
 ### exit=0
 ### round=4 bin=bench_rt_b
 rt scene: 900x900 image, 121149 BVH nodes, 66454 triangles
 CHECKSUM_SERIAL 7.1449470502e+08
 CHECKSUM_ISPC   7.1449470165e+08
-MS_SERIAL 313.029
-MS_ISPC   92.887
+MS_SERIAL 311.193
+MS_ISPC   92.393
 rel_checksum_diff -4.709e-09
 ### exit=0
 ### ---- ROUND 5 ----
 ### round=5 bin=target/release/mandelbrot
-mandelbrot(export,N=8):  12.387 ms  (checksum 27304085)
-mandelbrot(direct,N=8):  12.482 ms  (checksum 27304085)
+mandelbrot(export,N=8):  12.305 ms  (checksum 27304085)
+mandelbrot(direct,N=8):  12.334 ms  (checksum 27304085)
 mandelbrot: OK (checksum 27304085, export == direct)
 ### exit=0
 ### round=5 bin=target/release/options
 CHECKSUM 25446351.000000
-MS black_scholes 0.5173
-MS binomial_put 27.3789
+MS black_scholes 0.9215
+MS binomial_put 27.7339
 SUM bs=13102023.000000 binomial=12344328.000000
 VALIDATE bs: max_rel=0.000e0 mism=0/131072 (tol 1e-4)
 VALIDATE binomial: max_rel=0.000e0 mism=0/131072 (tol 1e-4)
 options: OK
 ### exit=0
 ### round=5 bin=target/release/stencil
-MS stencil 95.776
+MS stencil 94.459
 CHECKSUM 16983763.937203
 # validate: bit_exact=11947669/16777216, max_abs=4.435e-5, max_rel=9.562e-1, checksum_rel=1.088e-10 (ref_checksum=16983763.935355)
 stencil: OK (fma-tolerance vs stencil.bin; checksum_rel 1.09e-10, max_abs 4.43e-5)
 ### exit=0
 ### round=5 bin=target/release/volume
-MS 2212.308
+MS 2242.273
 CHECKSUM 109129.841793
 workload 896x1184 image, 48x64x48 volume
 VALIDATION ref_checksum=109129.838867 checksum_rel=2.681e-8 max_rel=8.978e-4 max_abs=6.615e-5 mismatches=0/1060864
 volume: OK
 ### exit=0
 ### round=5 bin=target/release/ao
-MS ao 192.174
+MS ao 192.717
 CHECKSUM ours 365243.449219 ref 365161.535156  (512x512 ns=2, N=8, range [0.000,1.000])
 VALIDATION checksum rel err 0.0224% vs ref_sum 365161.535 (documented 365161.535); per-pixel mean abs diff 0.00975, max abs diff 0.17969
 ao: OK (checksum rel err 0.0224% vs ref_sum 365161.535 (documented 365161.535); per-pixel mean abs diff 0.00975, max abs diff 0.17969)
@@ -527,90 +527,90 @@ ao: OK (checksum rel err 0.0224% vs ref_sum 365161.535 (documented 365161.535); 
 ### round=5 bin=target/release/rt
 rt scene: 900x900 image, 121149 BVH nodes, 66454 triangles
 CHECKSUM 7.1449470502e8
-MS 50.703
+MS 51.062
 validation: max_rel_err 0.000e0, mismatches 0 / 810000, checksum_rel 0.000e0
-rt: OK
+rt: OK (checksum_rel 0.00e0, 0 edge mismatches / 810000, max_rel 0.00e0)
 ### exit=0
 ### round=5 bin=bench_mandel_a
 # serial_checksum 27303605  diff 176
 CHECKSUM 27303781
-MS mandelbrot_ispc 26.115
-MS mandelbrot_serial 77.278
+MS mandelbrot_ispc 26.274
+MS mandelbrot_serial 77.438
 ### exit=0
 ### round=5 bin=bench_mandel_b
 # serial_checksum 27303605  diff 176
 CHECKSUM 27303781
-MS mandelbrot_ispc 14.855
-MS mandelbrot_serial 78.342
+MS mandelbrot_ispc 14.701
+MS mandelbrot_serial 78.062
 ### exit=0
 ### round=5 bin=bench_options_a
 CHECKSUM 25446351.000000
 CHECKSUM_SERIAL 25446379.000000
-MS black_scholes_ispc 0.6530
-MS binomial_put_ispc 43.5425
-MS black_scholes_serial 1.3179
-MS binomial_put_serial 126.5339
+MS black_scholes_ispc 0.7478
+MS binomial_put_ispc 43.4812
+MS black_scholes_serial 1.3137
+MS binomial_put_serial 127.9318
 SUM bs=13102023.000000 binomial=12344328.000000 (serial bs=13102023.000000 binomial=12344356.000000)
 ### exit=0
 ### round=5 bin=bench_options_b
 CHECKSUM 25446351.000000
 CHECKSUM_SERIAL 25446379.000000
-MS black_scholes_ispc 0.9378
-MS binomial_put_ispc 26.8044
-MS black_scholes_serial 1.6106
-MS binomial_put_serial 159.6675
+MS black_scholes_ispc 0.5377
+MS binomial_put_ispc 26.8446
+MS black_scholes_serial 1.6154
+MS binomial_put_serial 162.9740
 SUM bs=13102023.000000 binomial=12344328.000000 (serial bs=13102023.000000 binomial=12344356.000000)
 ### exit=0
 ### round=5 bin=bench_stencil_a
 # serial_checksum 16983763.935355  reldiff 0.000e+00
 CHECKSUM 16983763.935355
-MS stencil_ispc 111.383
-MS stencil_serial 115.411
+MS stencil_ispc 115.132
+MS stencil_serial 115.538
 ### exit=0
 ### round=5 bin=bench_stencil_b
 # serial_checksum 16983763.935355  reldiff 0.000e+00
 CHECKSUM 16983763.935355
-MS stencil_ispc 101.744
-MS stencil_serial 361.586
+MS stencil_ispc 102.593
+MS stencil_serial 348.747
 ### exit=0
 ### round=5 bin=bench_volume_a
 CHECKSUM serial 109129.838867
 CHECKSUM ispc 109129.843138
-MS serial 3167.791
-MS ispc 2267.404
+MS serial 3174.593
+MS ispc 2319.257
 workload 896x1184 image, 48x64x48 volume
 ### exit=0
 ### round=5 bin=bench_volume_b
 CHECKSUM serial 109129.838867
 CHECKSUM ispc 109129.843132
-MS serial 3211.934
-MS ispc 1977.754
+MS serial 3231.819
+MS ispc 1981.668
 workload 896x1184 image, 48x64x48 volume
 ### exit=0
 ### round=5 bin=bench_ao_a
 CHECKSUM ispc 365161.535156 serial 365323.546875  (512x512 ns=2, N=786432 floats)
-MS ispc 462.687
-MS serial 913.525
+MS ispc 454.450
+MS serial 909.576
 ### exit=0
 ### round=5 bin=bench_ao_b
 CHECKSUM ispc 365228.953125 serial 365323.546875  (512x512 ns=2, N=786432 floats)
-MS ispc 383.520
-MS serial 907.957
+MS ispc 380.126
+MS serial 907.503
 ### exit=0
 ### round=5 bin=bench_rt_a
 rt scene: 900x900 image, 121149 BVH nodes, 66454 triangles
 CHECKSUM_SERIAL 7.1449470502e+08
 CHECKSUM_ISPC   7.1449470165e+08
-MS_SERIAL 306.727
-MS_ISPC   102.861
+MS_SERIAL 305.961
+MS_ISPC   102.214
 rel_checksum_diff -4.709e-09
 ### exit=0
 ### round=5 bin=bench_rt_b
 rt scene: 900x900 image, 121149 BVH nodes, 66454 triangles
 CHECKSUM_SERIAL 7.1449470502e+08
 CHECKSUM_ISPC   7.1449470165e+08
-MS_SERIAL 308.970
-MS_ISPC   92.299
+MS_SERIAL 310.509
+MS_ISPC   92.916
 rel_checksum_diff -4.709e-09
 ### exit=0
 ### ALL DONE
