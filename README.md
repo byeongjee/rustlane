@@ -94,6 +94,20 @@ with a `rust-toolchain.toml` next to your `Cargo.toml`:
 channel = "nightly"
 ```
 
+On **x86-64**, build with AVX2 enabled — otherwise rustlane's 8-lane vectors
+lower to paired 128-bit SSE2 (the x86-64 baseline ISA) and run well below the
+benchmark numbers. Add a `.cargo/config.toml` next to your `Cargo.toml`:
+
+```toml
+[target.'cfg(target_arch = "x86_64")']
+rustflags = ["-C", "target-cpu=x86-64-v3"]   # AVX2 + FMA
+```
+
+`target-cpu=native` is not worth it here: AVX-512VL gives rustlane's fixed
+8-wide code no benefit — and can slightly regress it — on current hardware (see
+[PERFORMANCE-x86.md](PERFORMANCE-x86.md)). aarch64/NEON needs no flag; NEON is
+the baseline ISA there.
+
 **Not yet on crates.io** (publishing is pending). For now, depend on it by
 path from a checkout of this repository:
 
