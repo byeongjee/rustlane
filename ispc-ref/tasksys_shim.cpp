@@ -1,3 +1,7 @@
+// The ISPC task ABI implemented here (ISPCAlloc/ISPCLaunch/ISPCSync and the
+// TaskFuncPtr signature) is defined by Intel's ISPC (BSD-3-Clause); the serial
+// implementation below is original to this project. See THIRD-PARTY.md.
+//
 // Minimal serial task-runtime shim for ISPC kernels that also emit *_tasks
 // (launch) entry points. The bench driver only calls the non-task entries, so
 // these are here purely to resolve ISPCAlloc/ISPCLaunch/ISPCSync at link time.

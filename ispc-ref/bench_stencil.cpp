@@ -1,3 +1,7 @@
+// Third-party derivation: the inlined serial reference is adapted from Intel's
+// ISPC stencil example, Copyright (c) Intel Corporation,
+// SPDX-License-Identifier: BSD-3-Clause. See THIRD-PARTY.md.
+//
 // Benchmark driver for the ISPC 'stencil' example (3-D 7-point-ish iterated
 // leapfrog stencil). Follows the bench_mandel.cpp pattern: fixed workload,
 // 3 warmup + min-of-15 timed reps at whole-benchmark granularity, one CHECKSUM

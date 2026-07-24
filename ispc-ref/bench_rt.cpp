@@ -1,3 +1,7 @@
+// Third-party derivation: the serial reference and scene loaders are adapted
+// from Intel's ISPC rt example (examples/cpu/rt), Copyright (c) Intel
+// Corporation, SPDX-License-Identifier: BSD-3-Clause. See THIRD-PARTY.md.
+//
 // bench_rt.cpp - ISPC + serial baseline driver for the 'rt' BVH ray tracer.
 // Follows the bench_mandel.cpp pattern: fixed workload (sponza scene),
 // 3 warmup + min-of-15 timed reps at whole-benchmark granularity,

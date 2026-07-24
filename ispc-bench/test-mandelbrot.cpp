@@ -1,3 +1,12 @@
+/*
+  Copyright (c) Intel Corporation
+  SPDX-License-Identifier: BSD-3-Clause
+*/
+// Adapted from Intel's ISPC "mandelbrot" example driver
+// (examples/cpu/mandelbrot/mandelbrot.cpp: the writePPM helper + main harness).
+// The sibling test-*.cpp drivers retain the original dated Intel BSD notice;
+// this file's had been dropped. See THIRD-PARTY.md.
+
 #include <algorithm>
 #include <cstdlib>
 #include <stdio.h>

@@ -1,3 +1,8 @@
+// Third-party derivation: the serial reference (ao_serial) and the aobench
+// scene/algorithm come from Intel's ISPC examples, Copyright (c) Intel
+// Corporation, SPDX-License-Identifier: BSD-3-Clause (aobench itself is based on
+// Syoyo Fujita's aobench). See THIRD-PARTY.md.
+//
 // Baseline driver for the 'ao' (aobench) benchmark.
 // Pattern follows bench_mandel.cpp: steady_clock, 3 warmup + min-of-15 timed
 // reps at whole-benchmark granularity, one CHECKSUM line, one MS line per

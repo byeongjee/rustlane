@@ -1,3 +1,7 @@
+// Third-party derivation: the serial reference and the loadCamera/loadVolume
+// loaders are adapted from Intel's ISPC volume example, Copyright (c) Intel
+// Corporation, SPDX-License-Identifier: BSD-3-Clause. See THIRD-PARTY.md.
+//
 // Benchmark driver for the ISPC "volume" example (ray-marched volume rendering).
 // Pattern mirrors bench_mandel.cpp: fixed workload, 3 warmup + min-of-15 timed
 // reps at whole-benchmark granularity, one CHECKSUM line and one MS line per

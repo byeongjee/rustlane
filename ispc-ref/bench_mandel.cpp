@@ -1,3 +1,7 @@
+// Third-party derivation: the inlined serial reference is adapted from Intel's
+// ISPC mandelbrot example, Copyright (c) Intel Corporation,
+// SPDX-License-Identifier: BSD-3-Clause. See THIRD-PARTY.md.
+//
 // Benchmark driver for the ISPC "mandelbrot" example. Follows the shared
 // pattern (steady_clock, 3 warmup + min-of-15 timed reps at whole-benchmark
 // granularity, one CHECKSUM line and one MS line per variant, optional argv

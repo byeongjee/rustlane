@@ -4,7 +4,8 @@
 // variant, and reference-output dump when argv[1] gives a path prefix.
 //
 // Serial implementations adapted from ispc-bench/options_serial.cpp (Intel ISPC
-// examples, BSD-3-Clause). Workload matches ISPC's examples/cpu/options default:
+// examples, Copyright (c) Intel Corporation, BSD-3-Clause). See THIRD-PARTY.md.
+// Workload matches ISPC's examples/cpu/options default:
 // nOptions = 128*1024, BINOMIAL_NUM = 64, S/X/T/r/v = 100/98/2/0.02/5.
 
 #include <algorithm>

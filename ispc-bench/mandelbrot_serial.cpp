@@ -1,3 +1,12 @@
+/*
+  Copyright (c) 2010-2023, Intel Corporation
+
+  SPDX-License-Identifier: BSD-3-Clause
+*/
+// Verbatim from Intel's ISPC example examples/cpu/mandelbrot/mandelbrot_serial.cpp;
+// the upstream header (identical to the sibling *_serial.cpp files) had been
+// dropped from this copy and is restored here. See THIRD-PARTY.md.
+
 static int mandel(float c_re, float c_im, int count) {
     float z_re = c_re, z_im = c_im;
     int i;
