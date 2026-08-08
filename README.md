@@ -62,7 +62,7 @@ channel = "nightly-2026-08-07"
 
 # Cargo.toml
 [dependencies]
-rustlane = "0.1.0"
+rustlane = "0.1.1"
 ```
 
 The repository pins this known-good nightly for reproducible builds.

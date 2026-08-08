@@ -1,6 +1,6 @@
 [package]
 name = "rustlane"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT"
 description = "ISPC-style SPMD programming model for Rust: natural control flow lowered to masked SIMD by proc macros over nightly std::simd"
@@ -10,4 +10,4 @@ repository = "https://github.com/byeongjee/rustlane"
 readme = "../README.md"
 
 [dependencies]
-rustlane-macros = { version = "=0.1.0", path = "../rustlane-macros" }
+rustlane-macros = { version = "=0.1.1", path = "../rustlane-macros" }

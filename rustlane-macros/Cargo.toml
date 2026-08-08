@@ -1,6 +1,6 @@
 [package]
 name = "rustlane-macros"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT"
 description = "Proc macros for rustlane: the #[kernel]/#[export] attributes and foreach! that lower ISPC-style SPMD control flow to masked SIMD"
@@ -22,7 +22,9 @@ proc-macro2 = "1"
 # dep); cargo permits it because the back-edge is a DEV dependency, used only
 # when building rustlane-macros' own tests. The UI kernels need the real runtime
 # (`::rustlane::…` paths the macro emits, plus the `on_unimplemented` traits) in
-# scope to exercise the type-level rejections.
+# scope to exercise the type-level rejections. Keep its registry requirement
+# semver-compatible instead of exact because this crate is published before the
+# matching rustlane patch release exists in the registry.
 [dev-dependencies]
 trybuild = "1"
-rustlane = { path = "../rustlane" }
+rustlane = { version = "0.1.0", path = "../rustlane" }

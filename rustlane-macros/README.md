@@ -13,7 +13,7 @@ Most users should depend only on `rustlane`, which re-exports these macros:
 
 ```toml
 [dependencies]
-rustlane = "0.1.0"
+rustlane = "0.1.1"
 ```
 
 The facade crate requires nightly Rust because its runtime is built on
