@@ -54,7 +54,7 @@ others.
 
 ## Quick start
 
-Nightly only, and not yet on crates.io — depend on it by path from a checkout:
+Nightly only. Select the nightly toolchain and add rustlane to your dependencies:
 
 ```toml
 # rust-toolchain.toml
@@ -63,7 +63,7 @@ channel = "nightly"
 
 # Cargo.toml
 [dependencies]
-rustlane = { path = "path/to/rustlane" }
+rustlane = "0.1.0"
 ```
 
 A `#[kernel]` is the per-lane program; an `#[export]` is the all-uniform entry
