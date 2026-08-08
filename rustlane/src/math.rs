@@ -41,7 +41,7 @@
 use crate::varying::Varying;
 use core::simd::cmp::{SimdPartialEq, SimdPartialOrd};
 use core::simd::num::{SimdFloat, SimdInt, SimdUint};
-use core::simd::{LaneCount, Simd, SimdElement, SupportedLaneCount};
+use core::simd::{Select, Simd, SimdElement};
 use std::simd::StdFloat;
 
 /// Lane-wise square root (`fsqrt`).
@@ -49,7 +49,6 @@ use std::simd::StdFloat;
 pub fn sqrt<T, const N: usize>(x: Varying<T, N>) -> Varying<T, N>
 where
     T: SimdElement,
-    LaneCount<N>: SupportedLaneCount,
     Simd<T, N>: StdFloat,
 {
     Varying(x.0.sqrt())
@@ -60,7 +59,6 @@ where
 pub fn abs<T, const N: usize>(x: Varying<T, N>) -> Varying<T, N>
 where
     T: SimdElement,
-    LaneCount<N>: SupportedLaneCount,
     Simd<T, N>: SimdFloat,
 {
     Varying(x.0.abs())
@@ -72,23 +70,17 @@ where
 /// ISPC's `min`/`max`/`clamp` are generic over both (volume's `D()` clamps
 /// varying `int` voxel coordinates). Treat as sealed.
 pub trait MinMaxElem: SimdElement {
-    fn vmin<const N: usize>(a: Simd<Self, N>, b: Simd<Self, N>) -> Simd<Self, N>
-    where
-        LaneCount<N>: SupportedLaneCount;
-    fn vmax<const N: usize>(a: Simd<Self, N>, b: Simd<Self, N>) -> Simd<Self, N>
-    where
-        LaneCount<N>: SupportedLaneCount;
+    fn vmin<const N: usize>(a: Simd<Self, N>, b: Simd<Self, N>) -> Simd<Self, N>;
+    fn vmax<const N: usize>(a: Simd<Self, N>, b: Simd<Self, N>) -> Simd<Self, N>;
 }
 
 macro_rules! impl_minmax_elem {
     ($cat:path : $($t:ty),* $(,)?) => { $(
         impl MinMaxElem for $t {
             #[inline(always)]
-            fn vmin<const N: usize>(a: Simd<$t, N>, b: Simd<$t, N>) -> Simd<$t, N>
-            where LaneCount<N>: SupportedLaneCount { <Simd<$t, N> as $cat>::simd_min(a, b) }
+            fn vmin<const N: usize>(a: Simd<$t, N>, b: Simd<$t, N>) -> Simd<$t, N> { <Simd<$t, N> as $cat>::simd_min(a, b) }
             #[inline(always)]
-            fn vmax<const N: usize>(a: Simd<$t, N>, b: Simd<$t, N>) -> Simd<$t, N>
-            where LaneCount<N>: SupportedLaneCount { <Simd<$t, N> as $cat>::simd_max(a, b) }
+            fn vmax<const N: usize>(a: Simd<$t, N>, b: Simd<$t, N>) -> Simd<$t, N> { <Simd<$t, N> as $cat>::simd_max(a, b) }
         }
     )* };
 }
@@ -102,7 +94,6 @@ impl_minmax_elem!(core::simd::cmp::SimdOrd: i8, i16, i32, i64, isize, u8, u16, u
 pub fn min<T, const N: usize>(a: Varying<T, N>, b: Varying<T, N>) -> Varying<T, N>
 where
     T: MinMaxElem,
-    LaneCount<N>: SupportedLaneCount,
 {
     Varying(T::vmin(a.0, b.0))
 }
@@ -113,7 +104,6 @@ where
 pub fn max<T, const N: usize>(a: Varying<T, N>, b: Varying<T, N>) -> Varying<T, N>
 where
     T: MinMaxElem,
-    LaneCount<N>: SupportedLaneCount,
 {
     Varying(T::vmax(a.0, b.0))
 }
@@ -123,7 +113,6 @@ where
 pub fn floor<T, const N: usize>(x: Varying<T, N>) -> Varying<T, N>
 where
     T: SimdElement,
-    LaneCount<N>: SupportedLaneCount,
     Simd<T, N>: StdFloat,
 {
     Varying(x.0.floor())
@@ -134,7 +123,6 @@ where
 pub fn ceil<T, const N: usize>(x: Varying<T, N>) -> Varying<T, N>
 where
     T: SimdElement,
-    LaneCount<N>: SupportedLaneCount,
     Simd<T, N>: StdFloat,
 {
     Varying(x.0.ceil())
@@ -145,7 +133,6 @@ where
 pub fn round<T, const N: usize>(x: Varying<T, N>) -> Varying<T, N>
 where
     T: SimdElement,
-    LaneCount<N>: SupportedLaneCount,
     Simd<T, N>: StdFloat,
 {
     Varying(x.0.round())
@@ -161,7 +148,6 @@ pub fn clamp<T, const N: usize>(
 ) -> Varying<T, N>
 where
     T: MinMaxElem,
-    LaneCount<N>: SupportedLaneCount,
 {
     Varying(T::vmin(T::vmax(x.0, lo.0), hi.0))
 }
@@ -176,7 +162,6 @@ pub fn lerp<T, const N: usize>(
 ) -> Varying<T, N>
 where
     T: SimdElement,
-    LaneCount<N>: SupportedLaneCount,
     Simd<T, N>: StdFloat + core::ops::Sub<Output = Simd<T, N>>,
 {
     Varying((b.0 - a.0).mul_add(t.0, a.0))
@@ -195,10 +180,7 @@ pub fn fma<const N: usize>(
     a: Varying<f32, N>,
     b: Varying<f32, N>,
     c: Varying<f32, N>,
-) -> Varying<f32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+) -> Varying<f32, N> {
     Varying(a.0.mul_add(b.0, c.0))
 }
 
@@ -213,10 +195,7 @@ where
 /// multiple of 4, i.e. `N < 4`) use the exact `1/sqrt` fallback. Off aarch64
 /// the whole function is the exact `1/sqrt(x)`.
 #[inline(always)]
-pub fn rsqrt<const N: usize>(x: Varying<f32, N>) -> Varying<f32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub fn rsqrt<const N: usize>(x: Varying<f32, N>) -> Varying<f32, N> {
     Varying(rsqrt_simd(x.0))
 }
 
@@ -225,19 +204,13 @@ where
 /// correctly rounded. Fallback / non-aarch64: exact `1/x`. See [`rsqrt`] for
 /// the tail-lane note.
 #[inline(always)]
-pub fn rcp<const N: usize>(x: Varying<f32, N>) -> Varying<f32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub fn rcp<const N: usize>(x: Varying<f32, N>) -> Varying<f32, N> {
     Varying(rcp_simd(x.0))
 }
 
 #[cfg(target_arch = "aarch64")]
 #[inline]
-fn rsqrt_simd<const N: usize>(x: Simd<f32, N>) -> Simd<f32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+fn rsqrt_simd<const N: usize>(x: Simd<f32, N>) -> Simd<f32, N> {
     use core::arch::aarch64::{vld1q_f32, vmulq_f32, vrsqrteq_f32, vrsqrtsq_f32, vst1q_f32};
     let a = x.to_array();
     let mut out = [0.0f32; N];
@@ -263,19 +236,13 @@ where
 
 #[cfg(not(target_arch = "aarch64"))]
 #[inline(always)]
-fn rsqrt_simd<const N: usize>(x: Simd<f32, N>) -> Simd<f32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+fn rsqrt_simd<const N: usize>(x: Simd<f32, N>) -> Simd<f32, N> {
     Simd::splat(1.0) / x.sqrt()
 }
 
 #[cfg(target_arch = "aarch64")]
 #[inline]
-fn rcp_simd<const N: usize>(x: Simd<f32, N>) -> Simd<f32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+fn rcp_simd<const N: usize>(x: Simd<f32, N>) -> Simd<f32, N> {
     use core::arch::aarch64::{vld1q_f32, vmulq_f32, vrecpeq_f32, vrecpsq_f32, vst1q_f32};
     let a = x.to_array();
     let mut out = [0.0f32; N];
@@ -300,19 +267,13 @@ where
 
 #[cfg(not(target_arch = "aarch64"))]
 #[inline(always)]
-fn rcp_simd<const N: usize>(x: Simd<f32, N>) -> Simd<f32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+fn rcp_simd<const N: usize>(x: Simd<f32, N>) -> Simd<f32, N> {
     Simd::splat(1.0) / x
 }
 
 /// `e^x`, ported from ISPC `exp` (`__math_lib_ispc`).
 #[inline(always)]
-pub fn exp<const N: usize>(x: Varying<f32, N>) -> Varying<f32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub fn exp<const N: usize>(x: Varying<f32, N>) -> Varying<f32, N> {
     Varying(exp_simd(x.0))
 }
 
@@ -322,45 +283,30 @@ where
 /// ISPC's scalar "special value" slow path (its `if (any(special))`) is
 /// intentionally omitted; the vectorized main path gives `< 4 ULP`.
 #[inline(always)]
-pub fn log<const N: usize>(x: Varying<f32, N>) -> Varying<f32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub fn log<const N: usize>(x: Varying<f32, N>) -> Varying<f32, N> {
     Varying(log_simd(x.0))
 }
 
 /// `a^b`, ported from ISPC `pow`: `exp(b * log(a))`.
 #[inline(always)]
-pub fn pow<const N: usize>(a: Varying<f32, N>, b: Varying<f32, N>) -> Varying<f32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub fn pow<const N: usize>(a: Varying<f32, N>, b: Varying<f32, N>) -> Varying<f32, N> {
     Varying(exp_simd(b.0 * log_simd(a.0)))
 }
 
 /// `sin(x)`, ported from ISPC `sin` (`__math_lib_ispc`).
 #[inline(always)]
-pub fn sin<const N: usize>(x: Varying<f32, N>) -> Varying<f32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub fn sin<const N: usize>(x: Varying<f32, N>) -> Varying<f32, N> {
     Varying(sincos_simd(x.0, false))
 }
 
 /// `cos(x)`, ported from ISPC `cos` (`__math_lib_ispc`).
 #[inline(always)]
-pub fn cos<const N: usize>(x: Varying<f32, N>) -> Varying<f32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub fn cos<const N: usize>(x: Varying<f32, N>) -> Varying<f32, N> {
     Varying(sincos_simd(x.0, true))
 }
 
 #[inline(always)]
-fn exp_simd<const N: usize>(x_full: Simd<f32, N>) -> Simd<f32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+fn exp_simd<const N: usize>(x_full: Simd<f32, N>) -> Simd<f32, N> {
     const LN2_PART1: f32 = 0.6931457519;
     const LN2_PART2: f32 = 1.4286067653e-6;
     const ONE_OVER_LN2: f32 = 1.44269502162933349609375;
@@ -398,10 +344,7 @@ where
 }
 
 #[inline(always)]
-fn range_reduce_log<const N: usize>(input: Simd<f32, N>) -> (Simd<f32, N>, Simd<i32, N>)
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+fn range_reduce_log<const N: usize>(input: Simd<f32, N>) -> (Simd<f32, N>, Simd<i32, N>) {
     const NONEXPONENT_MASK: u32 = 0x807F_FFFF;
     const EXPONENT_NEG1: u32 = 126 << 23;
 
@@ -415,10 +358,7 @@ where
 }
 
 #[inline(always)]
-fn log_simd<const N: usize>(x_full: Simd<f32, N>) -> Simd<f32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+fn log_simd<const N: usize>(x_full: Simd<f32, N>) -> Simd<f32, N> {
     const LN2: f32 = 6.931471825e-01;
 
     const C02: f32 = -4.9999991060e-01;
@@ -456,10 +396,7 @@ where
 }
 
 #[inline(always)]
-fn sincos_simd<const N: usize>(x_full: Simd<f32, N>, want_cos: bool) -> Simd<f32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+fn sincos_simd<const N: usize>(x_full: Simd<f32, N>, want_cos: bool) -> Simd<f32, N> {
     const PI_OVER_TWO: f32 = 1.57079637050628662109375;
     const TWO_OVER_PI: f32 = 0.636619746685028076171875;
 

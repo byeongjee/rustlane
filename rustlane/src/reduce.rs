@@ -10,7 +10,7 @@
 use crate::varying::Varying;
 use core::ops::{Add, Sub};
 use core::simd::num::{SimdFloat, SimdInt, SimdUint};
-use core::simd::{LaneCount, Mask, Simd, SimdElement, SupportedLaneCount};
+use core::simd::{Mask, Select, Simd, SimdElement};
 
 /// Element types that support horizontal reductions. `*_IDENT` is the
 /// identity element for the corresponding reduction, used to fill inactive
@@ -23,15 +23,9 @@ pub trait ReduceElem: SimdElement {
     /// Identity for `max` (the type's minimum).
     const MAX_IDENT: Self;
 
-    fn vreduce_add<const N: usize>(v: Simd<Self, N>) -> Self
-    where
-        LaneCount<N>: SupportedLaneCount;
-    fn vreduce_min<const N: usize>(v: Simd<Self, N>) -> Self
-    where
-        LaneCount<N>: SupportedLaneCount;
-    fn vreduce_max<const N: usize>(v: Simd<Self, N>) -> Self
-    where
-        LaneCount<N>: SupportedLaneCount;
+    fn vreduce_add<const N: usize>(v: Simd<Self, N>) -> Self;
+    fn vreduce_min<const N: usize>(v: Simd<Self, N>) -> Self;
+    fn vreduce_max<const N: usize>(v: Simd<Self, N>) -> Self;
 }
 
 macro_rules! impl_reduce_float {
@@ -41,14 +35,11 @@ macro_rules! impl_reduce_float {
             const MIN_IDENT: $t = <$t>::INFINITY;
             const MAX_IDENT: $t = <$t>::NEG_INFINITY;
             #[inline(always)]
-            fn vreduce_add<const N: usize>(v: Simd<$t, N>) -> $t
-            where LaneCount<N>: SupportedLaneCount { <Simd<$t, N> as $cat>::reduce_sum(v) }
+            fn vreduce_add<const N: usize>(v: Simd<$t, N>) -> $t { <Simd<$t, N> as $cat>::reduce_sum(v) }
             #[inline(always)]
-            fn vreduce_min<const N: usize>(v: Simd<$t, N>) -> $t
-            where LaneCount<N>: SupportedLaneCount { <Simd<$t, N> as $cat>::reduce_min(v) }
+            fn vreduce_min<const N: usize>(v: Simd<$t, N>) -> $t { <Simd<$t, N> as $cat>::reduce_min(v) }
             #[inline(always)]
-            fn vreduce_max<const N: usize>(v: Simd<$t, N>) -> $t
-            where LaneCount<N>: SupportedLaneCount { <Simd<$t, N> as $cat>::reduce_max(v) }
+            fn vreduce_max<const N: usize>(v: Simd<$t, N>) -> $t { <Simd<$t, N> as $cat>::reduce_max(v) }
         }
     )* };
 }
@@ -60,14 +51,11 @@ macro_rules! impl_reduce_int {
             const MIN_IDENT: $t = <$t>::MAX;
             const MAX_IDENT: $t = <$t>::MIN;
             #[inline(always)]
-            fn vreduce_add<const N: usize>(v: Simd<$t, N>) -> $t
-            where LaneCount<N>: SupportedLaneCount { <Simd<$t, N> as $cat>::reduce_sum(v) }
+            fn vreduce_add<const N: usize>(v: Simd<$t, N>) -> $t { <Simd<$t, N> as $cat>::reduce_sum(v) }
             #[inline(always)]
-            fn vreduce_min<const N: usize>(v: Simd<$t, N>) -> $t
-            where LaneCount<N>: SupportedLaneCount { <Simd<$t, N> as $cat>::reduce_min(v) }
+            fn vreduce_min<const N: usize>(v: Simd<$t, N>) -> $t { <Simd<$t, N> as $cat>::reduce_min(v) }
             #[inline(always)]
-            fn vreduce_max<const N: usize>(v: Simd<$t, N>) -> $t
-            where LaneCount<N>: SupportedLaneCount { <Simd<$t, N> as $cat>::reduce_max(v) }
+            fn vreduce_max<const N: usize>(v: Simd<$t, N>) -> $t { <Simd<$t, N> as $cat>::reduce_max(v) }
         }
     )* };
 }
@@ -78,37 +66,25 @@ impl_reduce_int!(SimdUint: u8, u16, u32, u64, usize);
 
 /// Sum of all lanes.
 #[inline(always)]
-pub fn reduce_add<T: ReduceElem, const N: usize>(v: Varying<T, N>) -> T
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub fn reduce_add<T: ReduceElem, const N: usize>(v: Varying<T, N>) -> T {
     T::vreduce_add(v.0)
 }
 
 /// Minimum over all lanes.
 #[inline(always)]
-pub fn reduce_min<T: ReduceElem, const N: usize>(v: Varying<T, N>) -> T
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub fn reduce_min<T: ReduceElem, const N: usize>(v: Varying<T, N>) -> T {
     T::vreduce_min(v.0)
 }
 
 /// Maximum over all lanes.
 #[inline(always)]
-pub fn reduce_max<T: ReduceElem, const N: usize>(v: Varying<T, N>) -> T
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub fn reduce_max<T: ReduceElem, const N: usize>(v: Varying<T, N>) -> T {
     T::vreduce_max(v.0)
 }
 
 /// Sum over the active lanes of `mask`; inactive lanes contribute `0`.
 #[inline(always)]
-pub fn reduce_add_masked<T: ReduceElem, const N: usize>(v: Varying<T, N>, mask: Mask<i32, N>) -> T
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub fn reduce_add_masked<T: ReduceElem, const N: usize>(v: Varying<T, N>, mask: Mask<i32, N>) -> T {
     let sel = mask
         .cast::<T::Mask>()
         .select(v.0, Simd::splat(T::ADD_IDENT));
@@ -118,10 +94,7 @@ where
 /// Minimum over the active lanes of `mask`; inactive lanes contribute `+∞`
 /// (the type maximum), so they never affect the result.
 #[inline(always)]
-pub fn reduce_min_masked<T: ReduceElem, const N: usize>(v: Varying<T, N>, mask: Mask<i32, N>) -> T
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub fn reduce_min_masked<T: ReduceElem, const N: usize>(v: Varying<T, N>, mask: Mask<i32, N>) -> T {
     let sel = mask
         .cast::<T::Mask>()
         .select(v.0, Simd::splat(T::MIN_IDENT));
@@ -131,10 +104,7 @@ where
 /// Maximum over the active lanes of `mask`; inactive lanes contribute `-∞`
 /// (the type minimum).
 #[inline(always)]
-pub fn reduce_max_masked<T: ReduceElem, const N: usize>(v: Varying<T, N>, mask: Mask<i32, N>) -> T
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub fn reduce_max_masked<T: ReduceElem, const N: usize>(v: Varying<T, N>, mask: Mask<i32, N>) -> T {
     let sel = mask
         .cast::<T::Mask>()
         .select(v.0, Simd::splat(T::MAX_IDENT));
@@ -143,55 +113,37 @@ where
 
 /// `true` if any lane of the mask is set.
 #[inline(always)]
-pub fn any<const N: usize>(mask: Mask<i32, N>) -> bool
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub fn any<const N: usize>(mask: Mask<i32, N>) -> bool {
     mask.any()
 }
 
 /// `true` if every lane of the mask is set.
 #[inline(always)]
-pub fn all<const N: usize>(mask: Mask<i32, N>) -> bool
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub fn all<const N: usize>(mask: Mask<i32, N>) -> bool {
     mask.all()
 }
 
 /// `true` if no lane of the mask is set.
 #[inline(always)]
-pub fn none<const N: usize>(mask: Mask<i32, N>) -> bool
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub fn none<const N: usize>(mask: Mask<i32, N>) -> bool {
     !mask.any()
 }
 
 /// The lane-index vector `[0, 1, .., N-1]` (ISPC `programIndex`).
 #[inline(always)]
-pub fn lanes_iota<const N: usize>() -> Varying<i32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub fn lanes_iota<const N: usize>() -> Varying<i32, N> {
     Varying(Simd::from_array(core::array::from_fn(|i| i as i32)))
 }
 
 /// Broadcast lane `lane`'s value to every lane.
 #[inline(always)]
-pub fn broadcast<T: SimdElement, const N: usize>(v: Varying<T, N>, lane: usize) -> Varying<T, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub fn broadcast<T: SimdElement, const N: usize>(v: Varying<T, N>, lane: usize) -> Varying<T, N> {
     Varying::splat(v.to_array()[lane])
 }
 
 /// Extract lane `lane`'s value.
 #[inline(always)]
-pub fn extract<T: SimdElement, const N: usize>(v: Varying<T, N>, lane: usize) -> T
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub fn extract<T: SimdElement, const N: usize>(v: Varying<T, N>, lane: usize) -> T {
     v.to_array()[lane]
 }
 
@@ -201,10 +153,7 @@ pub fn insert<T: SimdElement, const N: usize>(
     v: Varying<T, N>,
     lane: usize,
     value: T,
-) -> Varying<T, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+) -> Varying<T, N> {
     let mut a = v.to_array();
     a[lane] = value;
     Varying::from_array(a)
@@ -212,10 +161,7 @@ where
 
 /// Cyclic rotate: `out[i] = v[(i + k) mod N]` (`k` may be negative).
 #[inline(always)]
-pub fn rotate<T: SimdElement, const N: usize>(v: Varying<T, N>, k: i32) -> Varying<T, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub fn rotate<T: SimdElement, const N: usize>(v: Varying<T, N>, k: i32) -> Varying<T, N> {
     let a = v.to_array();
     let n = N as i32;
     Varying::from_array(core::array::from_fn(|i| {
@@ -228,10 +174,7 @@ where
 /// element default (`0`). A positive `k` pulls higher-index lanes down toward
 /// lane 0 and fills the top with zeros (ISPC `shift` semantics).
 #[inline(always)]
-pub fn shift<T: SimdElement + Default, const N: usize>(v: Varying<T, N>, k: i32) -> Varying<T, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub fn shift<T: SimdElement + Default, const N: usize>(v: Varying<T, N>, k: i32) -> Varying<T, N> {
     let a = v.to_array();
     let n = N as i32;
     Varying::from_array(core::array::from_fn(|i| {
@@ -251,7 +194,6 @@ where
 pub fn exclusive_scan_add<T, const N: usize>(v: Varying<T, N>) -> Varying<T, N>
 where
     T: ReduceElem,
-    LaneCount<N>: SupportedLaneCount,
     Simd<T, N>: Add<Output = Simd<T, N>> + Sub<Output = Simd<T, N>>,
 {
     let orig = v.0;
@@ -285,10 +227,7 @@ pub fn packed_store_active<T: SimdElement, const N: usize>(
     mask: Mask<i32, N>,
     dst: &mut [T],
     values: Varying<T, N>,
-) -> usize
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+) -> usize {
     debug_assert!(
         dst.len() >= N,
         "packed_store_active: dst needs room for at least N lanes"
@@ -311,10 +250,7 @@ pub fn packed_load_active<T: SimdElement, const N: usize>(
     mask: Mask<i32, N>,
     src: &[T],
     out: &mut Varying<T, N>,
-) -> usize
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+) -> usize {
     let mut a = out.to_array();
     let mut count = 0usize;
     for i in 0..N {

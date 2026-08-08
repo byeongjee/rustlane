@@ -31,7 +31,6 @@
 
 use crate::memory::{gather_field, ActiveMask};
 use crate::varying::Varying;
-use core::simd::{LaneCount, SupportedLaneCount};
 
 /// A scalar value type with an SoA varying representation. Implemented for the
 /// primitive numeric leaves below and, via `#[derive(SpmdValue)]`, for every
@@ -39,14 +38,10 @@ use core::simd::{LaneCount, SupportedLaneCount};
 /// `#[spmd(uniform)]` fields).
 pub trait SpmdValue: Copy {
     /// The SoA varying representation at lane count `N`.
-    type Varying<const N: usize>: Copy
-    where
-        LaneCount<N>: SupportedLaneCount;
+    type Varying<const N: usize>: Copy;
 
     /// Broadcast one uniform value to every lane (splat-from-uniform-`S`).
-    fn splat<const N: usize>(self) -> Self::Varying<N>
-    where
-        LaneCount<N>: SupportedLaneCount;
+    fn splat<const N: usize>(self) -> Self::Varying<N>;
 }
 
 /// A value type whose AoS layout can be gathered field-by-field. Implemented
@@ -69,22 +64,16 @@ pub trait SpmdGather: SpmdValue {
         exec: E,
     ) -> Self::Varying<N>
     where
-        E: ActiveMask<N> + Copy,
-        LaneCount<N>: SupportedLaneCount;
+        E: ActiveMask<N> + Copy;
 }
 
 macro_rules! impl_prim_spmd_value {
     ($($t:ty),* $(,)?) => { $(
         impl SpmdValue for $t {
-            type Varying<const N: usize> = Varying<$t, N>
-            where
-                LaneCount<N>: SupportedLaneCount;
+            type Varying<const N: usize> = Varying<$t, N>;
 
             #[inline(always)]
-            fn splat<const N: usize>(self) -> Varying<$t, N>
-            where
-                LaneCount<N>: SupportedLaneCount,
-            {
+            fn splat<const N: usize>(self) -> Varying<$t, N> {
                 Varying::splat(self)
             }
         }
@@ -99,7 +88,6 @@ macro_rules! impl_prim_spmd_value {
             ) -> Varying<$t, N>
             where
                 E: ActiveMask<N> + Copy,
-                LaneCount<N>: SupportedLaneCount,
             {
                 // SAFETY: forwarded from the caller's `field_offset` contract;
                 // `$t: SimdElement + Default` holds for every primitive here.

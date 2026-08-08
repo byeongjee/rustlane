@@ -10,7 +10,7 @@
 
 use crate::varying::Varying;
 use core::simd::cmp::{SimdPartialEq, SimdPartialOrd};
-use core::simd::{LaneCount, Mask, Simd, SimdElement, SupportedLaneCount};
+use core::simd::{Mask, Simd, SimdElement};
 
 /// Rewrite target for `< > <= >=`.
 #[diagnostic::on_unimplemented(
@@ -81,7 +81,6 @@ impl SpmdEq for bool {
 
 impl<T: SimdElement, const N: usize> SpmdOrd for Varying<T, N>
 where
-    LaneCount<N>: SupportedLaneCount,
     Simd<T, N>: SimdPartialOrd + SimdPartialEq<Mask = Mask<T::Mask, N>>,
 {
     type Cond = Mask<i32, N>;
@@ -105,7 +104,6 @@ where
 
 impl<T: SimdElement, const N: usize> SpmdEq for Varying<T, N>
 where
-    LaneCount<N>: SupportedLaneCount,
     Simd<T, N>: SimdPartialEq<Mask = Mask<T::Mask, N>>,
 {
     type Cond = Mask<i32, N>;
@@ -121,7 +119,6 @@ where
 
 impl<T: SimdElement, const N: usize> SpmdOrd<T> for Varying<T, N>
 where
-    LaneCount<N>: SupportedLaneCount,
     Simd<T, N>: SimdPartialOrd + SimdPartialEq<Mask = Mask<T::Mask, N>>,
 {
     type Cond = Mask<i32, N>;
@@ -145,7 +142,6 @@ where
 
 impl<T: SimdElement, const N: usize> SpmdEq<T> for Varying<T, N>
 where
-    LaneCount<N>: SupportedLaneCount,
     Simd<T, N>: SimdPartialEq<Mask = Mask<T::Mask, N>>,
 {
     type Cond = Mask<i32, N>;
@@ -161,7 +157,6 @@ where
 
 impl<T: SimdElement, const N: usize> SpmdOrd<Varying<T, N>> for T
 where
-    LaneCount<N>: SupportedLaneCount,
     Simd<T, N>: SimdPartialOrd + SimdPartialEq<Mask = Mask<T::Mask, N>>,
 {
     type Cond = Mask<i32, N>;
@@ -185,7 +180,6 @@ where
 
 impl<T: SimdElement, const N: usize> SpmdEq<Varying<T, N>> for T
 where
-    LaneCount<N>: SupportedLaneCount,
     Simd<T, N>: SimdPartialEq<Mask = Mask<T::Mask, N>>,
 {
     type Cond = Mask<i32, N>;
@@ -244,10 +238,7 @@ impl SpmdAnd for bool {
     }
 }
 
-impl<const N: usize> SpmdAnd<Mask<i32, N>> for bool
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> SpmdAnd<Mask<i32, N>> for bool {
     type Out = Mask<i32, N>;
     #[inline(always)]
     fn spmd_and(self, rhs: impl FnOnce() -> Mask<i32, N>) -> Mask<i32, N> {
@@ -259,10 +250,7 @@ where
     }
 }
 
-impl<const N: usize> SpmdAnd for Mask<i32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> SpmdAnd for Mask<i32, N> {
     type Out = Mask<i32, N>;
     #[inline(always)]
     fn spmd_and(self, rhs: impl FnOnce() -> Mask<i32, N>) -> Mask<i32, N> {
@@ -270,10 +258,7 @@ where
     }
 }
 
-impl<const N: usize> SpmdAnd<bool> for Mask<i32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> SpmdAnd<bool> for Mask<i32, N> {
     type Out = Mask<i32, N>;
     #[inline(always)]
     fn spmd_and(self, rhs: impl FnOnce() -> bool) -> Mask<i32, N> {
@@ -293,10 +278,7 @@ impl SpmdOr for bool {
     }
 }
 
-impl<const N: usize> SpmdOr<Mask<i32, N>> for bool
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> SpmdOr<Mask<i32, N>> for bool {
     type Out = Mask<i32, N>;
     #[inline(always)]
     fn spmd_or(self, rhs: impl FnOnce() -> Mask<i32, N>) -> Mask<i32, N> {
@@ -308,10 +290,7 @@ where
     }
 }
 
-impl<const N: usize> SpmdOr for Mask<i32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> SpmdOr for Mask<i32, N> {
     type Out = Mask<i32, N>;
     #[inline(always)]
     fn spmd_or(self, rhs: impl FnOnce() -> Mask<i32, N>) -> Mask<i32, N> {
@@ -319,10 +298,7 @@ where
     }
 }
 
-impl<const N: usize> SpmdOr<bool> for Mask<i32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> SpmdOr<bool> for Mask<i32, N> {
     type Out = Mask<i32, N>;
     #[inline(always)]
     fn spmd_or(self, rhs: impl FnOnce() -> bool) -> Mask<i32, N> {
@@ -338,10 +314,7 @@ impl SpmdNot for bool {
     }
 }
 
-impl<const N: usize> SpmdNot for Mask<i32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> SpmdNot for Mask<i32, N> {
     type Out = Mask<i32, N>;
     #[inline(always)]
     fn spmd_not(self) -> Mask<i32, N> {

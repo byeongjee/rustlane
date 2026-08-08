@@ -9,7 +9,7 @@ use core::ops::{
     Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Div, DivAssign,
     Mul, MulAssign, Neg, Rem, RemAssign, Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign,
 };
-use core::simd::{LaneCount, Mask, Simd, SimdCast, SimdElement, SupportedLaneCount};
+use core::simd::{Mask, Select, Simd, SimdCast, SimdElement};
 
 /// Default lane count for the current build target (8 on aarch64, where
 /// `Simd<f32, 8>` maps to paired, double-pumped NEON q-registers; 8 is also
@@ -24,13 +24,9 @@ pub const NATIVE_LANES: usize = 8;
 #[repr(transparent)]
 pub struct Varying<T, const N: usize>(pub Simd<T, N>)
 where
-    T: SimdElement,
-    LaneCount<N>: SupportedLaneCount;
+    T: SimdElement;
 
-impl<T: SimdElement, const N: usize> Varying<T, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<T: SimdElement, const N: usize> Varying<T, N> {
     /// Broadcast a uniform value to all lanes.
     #[inline(always)]
     pub fn splat(v: T) -> Self {
@@ -75,19 +71,14 @@ where
 /// so a generic `Varying::cast` needs this shim. Implemented for exactly the
 /// primitive numeric element types; treat as sealed.
 pub trait SpmdCastElement: SimdElement + SimdCast {
-    fn cast_simd<U: SimdCast, const N: usize>(v: Simd<Self, N>) -> Simd<U, N>
-    where
-        LaneCount<N>: SupportedLaneCount;
+    fn cast_simd<U: SimdCast, const N: usize>(v: Simd<Self, N>) -> Simd<U, N>;
 }
 
 macro_rules! impl_cast_element {
     ($cat:path : $($t:ty),* $(,)?) => { $(
         impl SpmdCastElement for $t {
             #[inline(always)]
-            fn cast_simd<U: SimdCast, const N: usize>(v: Simd<$t, N>) -> Simd<U, N>
-            where
-                LaneCount<N>: SupportedLaneCount,
-            {
+            fn cast_simd<U: SimdCast, const N: usize>(v: Simd<$t, N>) -> Simd<U, N> {
                 <Simd<$t, N> as $cat>::cast::<U>(v)
             }
         }
@@ -98,10 +89,7 @@ impl_cast_element!(core::simd::num::SimdFloat: f32, f64);
 impl_cast_element!(core::simd::num::SimdInt: i8, i16, i32, i64, isize);
 impl_cast_element!(core::simd::num::SimdUint: u8, u16, u32, u64, usize);
 
-impl<T: SpmdCastElement, const N: usize> Varying<T, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<T: SpmdCastElement, const N: usize> Varying<T, N> {
     /// Lane-wise numeric cast (`as`-semantics), via [`SpmdCast`].
     #[inline(always)]
     pub fn cast<U: SimdElement + SimdCast>(self) -> Varying<U, N> {
@@ -109,10 +97,7 @@ where
     }
 }
 
-impl<T: SimdElement + Default, const N: usize> Default for Varying<T, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<T: SimdElement + Default, const N: usize> Default for Varying<T, N> {
     #[inline(always)]
     fn default() -> Self {
         Self::splat(T::default())
@@ -123,7 +108,6 @@ macro_rules! impl_varying_binop {
     ($($op:ident, $fn:ident, $opas:ident, $fnas:ident);* $(;)?) => { $(
         impl<T: SimdElement, const N: usize> $op for Varying<T, N>
         where
-            LaneCount<N>: SupportedLaneCount,
             Simd<T, N>: $op<Output = Simd<T, N>>,
         {
             type Output = Varying<T, N>;
@@ -135,7 +119,6 @@ macro_rules! impl_varying_binop {
 
         impl<T: SimdElement, const N: usize> $op<T> for Varying<T, N>
         where
-            LaneCount<N>: SupportedLaneCount,
             Simd<T, N>: $op<Output = Simd<T, N>>,
         {
             type Output = Varying<T, N>;
@@ -147,7 +130,6 @@ macro_rules! impl_varying_binop {
 
         impl<T: SimdElement, const N: usize> $opas for Varying<T, N>
         where
-            LaneCount<N>: SupportedLaneCount,
             Simd<T, N>: $op<Output = Simd<T, N>>,
         {
             #[inline(always)]
@@ -158,7 +140,6 @@ macro_rules! impl_varying_binop {
 
         impl<T: SimdElement, const N: usize> $opas<T> for Varying<T, N>
         where
-            LaneCount<N>: SupportedLaneCount,
             Simd<T, N>: $op<Output = Simd<T, N>>,
         {
             #[inline(always)]
@@ -184,7 +165,6 @@ impl_varying_binop!(
 
 impl<T: SimdElement, const N: usize> Neg for Varying<T, N>
 where
-    LaneCount<N>: SupportedLaneCount,
     Simd<T, N>: Neg<Output = Simd<T, N>>,
 {
     type Output = Varying<T, N>;
@@ -198,7 +178,6 @@ macro_rules! impl_scalar_lhs_op {
     ($t:ty, $op:ident, $fn:ident) => {
         impl<const N: usize> $op<Varying<$t, N>> for $t
         where
-            LaneCount<N>: SupportedLaneCount,
             Simd<$t, N>: $op<Output = Simd<$t, N>>,
         {
             type Output = Varying<$t, N>;
@@ -246,7 +225,6 @@ impl<T, U, const N: usize> SpmdCast<U> for Varying<T, N>
 where
     T: SpmdCastElement,
     U: SimdElement + SimdCast,
-    LaneCount<N>: SupportedLaneCount,
 {
     type Out = Varying<U, N>;
     #[inline(always)]
@@ -275,70 +253,49 @@ macro_rules! impl_scalar_cast_from {
 
 impl_scalar_cast_from!(f32, f64, i8, i16, i32, i64, isize, u8, u16, u32, u64, usize);
 
-impl<T: SimdElement, const N: usize> MaskedAssign<AllOn> for Varying<T, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<T: SimdElement, const N: usize> MaskedAssign<AllOn> for Varying<T, N> {
     #[inline(always)]
     fn masked_assign(&mut self, _exec: AllOn, value: Self) {
         *self = value;
     }
 }
 
-impl<T: SimdElement, const N: usize> MaskedAssign<AllOn, T> for Varying<T, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<T: SimdElement, const N: usize> MaskedAssign<AllOn, T> for Varying<T, N> {
     #[inline(always)]
     fn masked_assign(&mut self, _exec: AllOn, value: T) {
         self.0 = Simd::splat(value);
     }
 }
 
-impl<T: SimdElement, const N: usize> MaskedAssign<BoolGuard> for Varying<T, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<T: SimdElement, const N: usize> MaskedAssign<BoolGuard> for Varying<T, N> {
     #[inline(always)]
     fn masked_assign(&mut self, _exec: BoolGuard, value: Self) {
         *self = value;
     }
 }
 
-impl<T: SimdElement, const N: usize> MaskedAssign<BoolGuard, T> for Varying<T, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<T: SimdElement, const N: usize> MaskedAssign<BoolGuard, T> for Varying<T, N> {
     #[inline(always)]
     fn masked_assign(&mut self, _exec: BoolGuard, value: T) {
         self.0 = Simd::splat(value);
     }
 }
 
-impl<T: SimdElement, const N: usize> MaskedAssign<VMask<N>> for Varying<T, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<T: SimdElement, const N: usize> MaskedAssign<VMask<N>> for Varying<T, N> {
     #[inline(always)]
     fn masked_assign(&mut self, exec: VMask<N>, value: Self) {
         self.0 = exec.0.cast::<T::Mask>().select(value.0, self.0);
     }
 }
 
-impl<T: SimdElement, const N: usize> MaskedAssign<VMask<N>, T> for Varying<T, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<T: SimdElement, const N: usize> MaskedAssign<VMask<N>, T> for Varying<T, N> {
     #[inline(always)]
     fn masked_assign(&mut self, exec: VMask<N>, value: T) {
         self.0 = exec.0.cast::<T::Mask>().select(Simd::splat(value), self.0);
     }
 }
 
-impl<T: SimdElement, const N: usize> MaskedAssign<VMaskGuard<N>> for Varying<T, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<T: SimdElement, const N: usize> MaskedAssign<VMaskGuard<N>> for Varying<T, N> {
     #[inline(always)]
     fn masked_assign(&mut self, exec: VMaskGuard<N>, value: Self) {
         let m = exec.0 & Mask::splat(exec.1);
@@ -346,10 +303,7 @@ where
     }
 }
 
-impl<T: SimdElement, const N: usize> MaskedAssign<VMaskGuard<N>, T> for Varying<T, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<T: SimdElement, const N: usize> MaskedAssign<VMaskGuard<N>, T> for Varying<T, N> {
     #[inline(always)]
     fn masked_assign(&mut self, exec: VMaskGuard<N>, value: T) {
         let m = exec.0 & Mask::splat(exec.1);
@@ -357,85 +311,61 @@ where
     }
 }
 
-impl<const N: usize> MaskedAssign<AllOn> for Mask<i32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> MaskedAssign<AllOn> for Mask<i32, N> {
     #[inline(always)]
     fn masked_assign(&mut self, _exec: AllOn, value: Self) {
         *self = value;
     }
 }
 
-impl<const N: usize> MaskedAssign<AllOn, bool> for Mask<i32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> MaskedAssign<AllOn, bool> for Mask<i32, N> {
     #[inline(always)]
     fn masked_assign(&mut self, _exec: AllOn, value: bool) {
         *self = Mask::splat(value);
     }
 }
 
-impl<const N: usize> MaskedAssign<BoolGuard> for Mask<i32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> MaskedAssign<BoolGuard> for Mask<i32, N> {
     #[inline(always)]
     fn masked_assign(&mut self, _exec: BoolGuard, value: Self) {
         *self = value;
     }
 }
 
-impl<const N: usize> MaskedAssign<BoolGuard, bool> for Mask<i32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> MaskedAssign<BoolGuard, bool> for Mask<i32, N> {
     #[inline(always)]
     fn masked_assign(&mut self, _exec: BoolGuard, value: bool) {
         *self = Mask::splat(value);
     }
 }
 
-impl<const N: usize> MaskedAssign<VMask<N>> for Mask<i32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> MaskedAssign<VMask<N>> for Mask<i32, N> {
     #[inline(always)]
     fn masked_assign(&mut self, exec: VMask<N>, value: Self) {
-        *self = exec.0.select_mask(value, *self);
+        *self = exec.0.select(value, *self);
     }
 }
 
-impl<const N: usize> MaskedAssign<VMask<N>, bool> for Mask<i32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> MaskedAssign<VMask<N>, bool> for Mask<i32, N> {
     #[inline(always)]
     fn masked_assign(&mut self, exec: VMask<N>, value: bool) {
-        *self = exec.0.select_mask(Mask::splat(value), *self);
+        *self = exec.0.select(Mask::splat(value), *self);
     }
 }
 
-impl<const N: usize> MaskedAssign<VMaskGuard<N>> for Mask<i32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> MaskedAssign<VMaskGuard<N>> for Mask<i32, N> {
     #[inline(always)]
     fn masked_assign(&mut self, exec: VMaskGuard<N>, value: Self) {
         let m = exec.0 & Mask::splat(exec.1);
-        *self = m.select_mask(value, *self);
+        *self = m.select(value, *self);
     }
 }
 
-impl<const N: usize> MaskedAssign<VMaskGuard<N>, bool> for Mask<i32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> MaskedAssign<VMaskGuard<N>, bool> for Mask<i32, N> {
     #[inline(always)]
     fn masked_assign(&mut self, exec: VMaskGuard<N>, value: bool) {
         let m = exec.0 & Mask::splat(exec.1);
-        *self = m.select_mask(Mask::splat(value), *self);
+        *self = m.select(Mask::splat(value), *self);
     }
 }
 

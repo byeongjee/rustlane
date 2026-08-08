@@ -42,7 +42,7 @@ use core::ops::Add;
 use core::simd::cmp::SimdPartialOrd;
 use core::simd::num::{SimdInt, SimdUint};
 use core::simd::ptr::SimdConstPtr;
-use core::simd::{LaneCount, Mask, Simd, SimdElement, SupportedLaneCount};
+use core::simd::{Mask, Select, Simd, SimdElement};
 
 /// A statically-contiguous index: a uniform `base` plus the implicit iota
 /// `0..N`, so lane `l` refers to element `base + l`. The `foreach` lowering
@@ -77,10 +77,7 @@ impl<const N: usize> LinearIndex<N> {
     /// Materialise as `Varying<i32, N>` (`[base, base+1, .., base+N-1]`): the
     /// demotion to the gather path.
     #[inline(always)]
-    pub fn to_varying(self) -> Varying<i32, N>
-    where
-        LaneCount<N>: SupportedLaneCount,
-    {
+    pub fn to_varying(self) -> Varying<i32, N> {
         let iota = Simd::<i32, N>::from_array(core::array::from_fn(|l| l as i32));
         Varying(Simd::splat(self.base as i32) + iota)
     }
@@ -106,10 +103,7 @@ impl<const N: usize> Add<LinearIndex<N>> for i32 {
     }
 }
 
-impl<const N: usize> Add<Varying<i32, N>> for LinearIndex<N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> Add<Varying<i32, N>> for LinearIndex<N> {
     type Output = Varying<i32, N>;
     #[inline(always)]
     fn add(self, rhs: Varying<i32, N>) -> Varying<i32, N> {
@@ -117,10 +111,7 @@ where
     }
 }
 
-impl<const N: usize> Add<LinearIndex<N>> for Varying<i32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> Add<LinearIndex<N>> for Varying<i32, N> {
     type Output = Varying<i32, N>;
     #[inline(always)]
     fn add(self, rhs: LinearIndex<N>) -> Varying<i32, N> {
@@ -128,20 +119,14 @@ where
     }
 }
 
-impl<const N: usize> From<LinearIndex<N>> for Varying<i32, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> From<LinearIndex<N>> for Varying<i32, N> {
     #[inline(always)]
     fn from(li: LinearIndex<N>) -> Varying<i32, N> {
         li.to_varying()
     }
 }
 
-pub trait ActiveMask<const N: usize>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub trait ActiveMask<const N: usize> {
     fn active_mask(self) -> Mask<i32, N>;
 
     #[inline(always)]
@@ -150,10 +135,7 @@ where
     }
 }
 
-impl<const N: usize> ActiveMask<N> for AllOn
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> ActiveMask<N> for AllOn {
     #[inline(always)]
     fn active_mask(self) -> Mask<i32, N> {
         Mask::splat(true)
@@ -164,10 +146,7 @@ where
     }
 }
 
-impl<const N: usize> ActiveMask<N> for BoolGuard
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> ActiveMask<N> for BoolGuard {
     #[inline(always)]
     fn active_mask(self) -> Mask<i32, N> {
         Mask::splat(self.0)
@@ -178,20 +157,14 @@ where
     }
 }
 
-impl<const N: usize> ActiveMask<N> for VMask<N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> ActiveMask<N> for VMask<N> {
     #[inline(always)]
     fn active_mask(self) -> Mask<i32, N> {
         self.0
     }
 }
 
-impl<const N: usize> ActiveMask<N> for VMaskGuard<N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> ActiveMask<N> for VMaskGuard<N> {
     #[inline(always)]
     fn active_mask(self) -> Mask<i32, N> {
         self.0 & Mask::splat(self.1)
@@ -276,10 +249,7 @@ impl_scalar_write!(AllOn, BoolGuard);
 macro_rules! impl_varying_elem_write_masked {
     ($($E:ty),* $(,)?) => { $(
         impl<T: SimdElement, const N: usize> SpmdWrite<usize, $E, Varying<T, N>>
-            for [Varying<T, N>]
-        where
-            LaneCount<N>: SupportedLaneCount,
-        {
+            for [Varying<T, N>] {
             #[inline(always)]
             fn spmd_write(&mut self, i: usize, exec: $E, value: Varying<T, N>) {
                 crate::exec::MaskedAssign::masked_assign(&mut self[i], exec, value);
@@ -297,10 +267,7 @@ impl_varying_elem_write_masked!(VMask<N>, VMaskGuard<N>);
 
 macro_rules! impl_varying_elem_write_scalar_rhs {
     ($($E:ty),* $(,)?) => { $(
-        impl<T: SimdElement, const N: usize> SpmdWrite<usize, $E, T> for [Varying<T, N>]
-        where
-            LaneCount<N>: SupportedLaneCount,
-        {
+        impl<T: SimdElement, const N: usize> SpmdWrite<usize, $E, T> for [Varying<T, N>] {
             #[inline(always)]
             fn spmd_write(&mut self, i: usize, exec: $E, value: T) {
                 crate::exec::MaskedAssign::masked_assign(&mut self[i], exec, value);
@@ -318,10 +285,7 @@ impl_varying_elem_write_scalar_rhs!(AllOn, BoolGuard, VMask<N>, VMaskGuard<N>);
 
 macro_rules! impl_linear_plain {
     ($($E:ty),* $(,)?) => { $(
-        impl<T: SimdElement, const N: usize> SpmdRead<LinearIndex<N>, $E> for [T]
-        where
-            LaneCount<N>: SupportedLaneCount,
-        {
+        impl<T: SimdElement, const N: usize> SpmdRead<LinearIndex<N>, $E> for [T] {
             type Out = Varying<T, N>;
             #[inline(always)]
             fn spmd_read(&self, idx: LinearIndex<N>, _exec: $E) -> Varying<T, N> {
@@ -337,10 +301,7 @@ macro_rules! impl_linear_plain {
             }
         }
 
-        impl<T: SimdElement, const N: usize> SpmdWrite<LinearIndex<N>, $E, Varying<T, N>> for [T]
-        where
-            LaneCount<N>: SupportedLaneCount,
-        {
+        impl<T: SimdElement, const N: usize> SpmdWrite<LinearIndex<N>, $E, Varying<T, N>> for [T] {
             #[inline(always)]
             fn spmd_write(&mut self, idx: LinearIndex<N>, _exec: $E, value: Varying<T, N>) {
                 let b = idx.base;
@@ -364,10 +325,7 @@ impl_linear_plain!(AllOn, BoolGuard);
 
 macro_rules! impl_linear_masked {
     ($E:ty, |$e:ident| $mask:expr) => {
-        impl<T: SimdElement + Default, const N: usize> SpmdRead<LinearIndex<N>, $E> for [T]
-        where
-            LaneCount<N>: SupportedLaneCount,
-        {
+        impl<T: SimdElement + Default, const N: usize> SpmdRead<LinearIndex<N>, $E> for [T] {
             type Out = Varying<T, N>;
             #[inline(always)]
             fn spmd_read(&self, idx: LinearIndex<N>, exec: $E) -> Varying<T, N> {
@@ -402,10 +360,7 @@ macro_rules! impl_linear_masked {
             }
         }
 
-        impl<T: SimdElement, const N: usize> SpmdWrite<LinearIndex<N>, $E, Varying<T, N>> for [T]
-        where
-            LaneCount<N>: SupportedLaneCount,
-        {
+        impl<T: SimdElement, const N: usize> SpmdWrite<LinearIndex<N>, $E, Varying<T, N>> for [T] {
             #[inline(always)]
             fn spmd_write(&mut self, idx: LinearIndex<N>, exec: $E, value: Varying<T, N>) {
                 let b = idx.base.min(self.len());
@@ -445,8 +400,6 @@ impl_linear_masked!(VMaskGuard<N>, |e| e.0 & Mask::splat(e.1));
 
 impl<T: SimdElement + Default, const N: usize, E: ActiveMask<N>> SpmdRead<Varying<i32, N>, E>
     for [T]
-where
-    LaneCount<N>: SupportedLaneCount,
 {
     type Out = Varying<T, N>;
     #[inline(always)]
@@ -503,8 +456,6 @@ where
 
 impl<T: SimdElement, const N: usize, E: ActiveMask<N>> SpmdWrite<Varying<i32, N>, E, Varying<T, N>>
     for [T]
-where
-    LaneCount<N>: SupportedLaneCount,
 {
     #[inline(always)]
     fn spmd_write(&mut self, idx: Varying<i32, N>, exec: E, value: Varying<T, N>) {
@@ -559,36 +510,28 @@ where
 }
 
 #[inline(always)]
-fn all_lanes_in_bounds<const N: usize>(idxs: Simd<i32, N>, len: usize) -> bool
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+fn all_lanes_in_bounds<const N: usize>(idxs: Simd<i32, N>, len: usize) -> bool {
     len <= i32::MAX as usize && (idxs.cast::<u32>().reduce_max() as usize) < len
 }
 
 #[inline(always)]
-fn iota_usize<const N: usize>() -> Simd<usize, N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+fn iota_usize<const N: usize>() -> Simd<usize, N> {
     Simd::from_array(core::array::from_fn(|l| l))
 }
 
 #[inline(always)]
-fn linear_in_bounds<const N: usize>(base: usize, len: usize, active: Mask<i32, N>) -> bool
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+fn linear_in_bounds<const N: usize>(base: usize, len: usize, active: Mask<i32, N>) -> bool {
     let idxs = Simd::splat(base) + iota_usize::<N>();
     let oob = idxs.simd_ge(Simd::splat(len)).cast::<i32>();
     !(active & oob).any()
 }
 
 #[inline(always)]
-fn gather_in_bounds<const N: usize>(idxs: Simd<usize, N>, len: usize, active: Mask<i32, N>) -> bool
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+fn gather_in_bounds<const N: usize>(
+    idxs: Simd<usize, N>,
+    len: usize,
+    active: Mask<i32, N>,
+) -> bool {
     let oob = idxs.simd_ge(Simd::splat(len)).cast::<i32>();
     !(active & oob).any()
 }
@@ -617,7 +560,6 @@ pub unsafe fn gather_field<S, F, const N: usize, E>(
 where
     F: SimdElement + Default,
     E: ActiveMask<N>,
-    LaneCount<N>: SupportedLaneCount,
 {
     let active = exec.active_mask();
     let idxs = idx.cast::<usize>().0;
@@ -657,7 +599,6 @@ pub fn scatter_add<T, const N: usize, E>(
 ) where
     T: SimdElement + core::ops::AddAssign,
     E: ActiveMask<N>,
-    LaneCount<N>: SupportedLaneCount,
 {
     let active = exec.active_mask();
     let idxs = idx.cast::<usize>().0;

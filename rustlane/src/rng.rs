@@ -19,25 +19,19 @@
 
 use crate::varying::Varying;
 use core::simd::num::SimdFloat;
-use core::simd::{LaneCount, Simd, SupportedLaneCount};
+use core::simd::Simd;
 
 /// Per-lane RNG state — four `u32` Tausworthe components, one set per lane.
 /// Mirrors ISPC's `struct RNGState { unsigned int z1, z2, z3, z4; }`.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct RNGState<const N: usize>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub struct RNGState<const N: usize> {
     pub z1: Varying<u32, N>,
     pub z2: Varying<u32, N>,
     pub z3: Varying<u32, N>,
     pub z4: Varying<u32, N>,
 }
 
-impl<const N: usize> RNGState<N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> RNGState<N> {
     /// Construct and seed in one step (`seed_rng` on a fresh state).
     #[inline(always)]
     pub fn new(seeds: Varying<u32, N>) -> Self {

@@ -12,7 +12,7 @@
 //! | [`VMaskGuard<N>`] | uniform branch nested in varying flow     | mask + bool (real branch, mask kept) |
 
 use core::simd::cmp::SimdPartialOrd;
-use core::simd::{LaneCount, Mask, Simd, SupportedLaneCount};
+use core::simd::{Mask, Simd};
 
 /// Full-mask execution context: kernel entry and unmasked blocks. ZST.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
@@ -26,23 +26,16 @@ pub struct BoolGuard(pub bool);
 
 /// Varying execution context: an active-lane mask.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct VMask<const N: usize>(pub Mask<i32, N>)
-where
-    LaneCount<N>: SupportedLaneCount;
+pub struct VMask<const N: usize>(pub Mask<i32, N>);
 
 /// Result of narrowing a [`VMask`] by a uniform (`bool`) condition:
 /// the varying mask is preserved, and `should_branch()` returns the bool so
 /// the uniform condition still compiles to a real branch (a uniform `if`
 /// inside varying control flow).
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct VMaskGuard<const N: usize>(pub Mask<i32, N>, pub bool)
-where
-    LaneCount<N>: SupportedLaneCount;
+pub struct VMaskGuard<const N: usize>(pub Mask<i32, N>, pub bool);
 
-impl<const N: usize> VMask<N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> VMask<N> {
     /// All lanes active.
     #[inline(always)]
     pub fn full() -> Self {
@@ -108,10 +101,7 @@ impl Exec for BoolGuard {
     }
 }
 
-impl<const N: usize> Exec for VMask<N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> Exec for VMask<N> {
     const UNIFORM: bool = false;
     #[inline(always)]
     fn should_branch(self) -> bool {
@@ -123,10 +113,7 @@ where
     }
 }
 
-impl<const N: usize> Exec for VMaskGuard<N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> Exec for VMaskGuard<N> {
     const UNIFORM: bool = false;
     #[inline(always)]
     fn should_branch(self) -> bool {
@@ -178,10 +165,7 @@ impl AndCond<bool> for AllOn {
     }
 }
 
-impl<const N: usize> AndCond<Mask<i32, N>> for AllOn
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> AndCond<Mask<i32, N>> for AllOn {
     type Out = VMask<N>;
     #[inline(always)]
     fn and_cond(self, cond: Mask<i32, N>) -> VMask<N> {
@@ -205,10 +189,7 @@ impl AndCond<bool> for BoolGuard {
     }
 }
 
-impl<const N: usize> AndCond<Mask<i32, N>> for BoolGuard
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> AndCond<Mask<i32, N>> for BoolGuard {
     type Out = VMask<N>;
     #[inline(always)]
     fn and_cond(self, cond: Mask<i32, N>) -> VMask<N> {
@@ -220,10 +201,7 @@ where
     }
 }
 
-impl<const N: usize> AndCond<Mask<i32, N>> for VMask<N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> AndCond<Mask<i32, N>> for VMask<N> {
     type Out = VMask<N>;
     #[inline(always)]
     fn and_cond(self, cond: Mask<i32, N>) -> VMask<N> {
@@ -235,10 +213,7 @@ where
     }
 }
 
-impl<const N: usize> AndCond<bool> for VMask<N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> AndCond<bool> for VMask<N> {
     type Out = VMaskGuard<N>;
     #[inline(always)]
     fn and_cond(self, cond: bool) -> VMaskGuard<N> {
@@ -250,10 +225,7 @@ where
     }
 }
 
-impl<const N: usize> AndCond<Mask<i32, N>> for VMaskGuard<N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> AndCond<Mask<i32, N>> for VMaskGuard<N> {
     type Out = VMask<N>;
     #[inline(always)]
     fn and_cond(self, cond: Mask<i32, N>) -> VMask<N> {
@@ -265,10 +237,7 @@ where
     }
 }
 
-impl<const N: usize> AndCond<bool> for VMaskGuard<N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> AndCond<bool> for VMaskGuard<N> {
     type Out = VMaskGuard<N>;
     #[inline(always)]
     fn and_cond(self, cond: bool) -> VMaskGuard<N> {
@@ -332,9 +301,7 @@ pub struct UniformLoop(pub bool);
 
 /// Loop state for a loop with varying exits: the surviving-lane set.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct VaryingLoop<const N: usize>(pub Mask<i32, N>)
-where
-    LaneCount<N>: SupportedLaneCount;
+pub struct VaryingLoop<const N: usize>(pub Mask<i32, N>);
 
 /// Loop entry for `while` loops, SEEDED with the first evaluation of the
 /// loop condition. The condition's type picks the loop-state type via the
@@ -361,10 +328,7 @@ impl EnterLoop<bool> for AllOn {
     }
 }
 
-impl<const N: usize> EnterLoop<Mask<i32, N>> for AllOn
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> EnterLoop<Mask<i32, N>> for AllOn {
     type LoopState = VaryingLoop<N>;
     #[inline(always)]
     fn enter_loop(self, first_cond: Mask<i32, N>) -> VaryingLoop<N> {
@@ -380,10 +344,7 @@ impl EnterLoop<bool> for BoolGuard {
     }
 }
 
-impl<const N: usize> EnterLoop<Mask<i32, N>> for BoolGuard
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> EnterLoop<Mask<i32, N>> for BoolGuard {
     type LoopState = VaryingLoop<N>;
     #[inline(always)]
     fn enter_loop(self, first_cond: Mask<i32, N>) -> VaryingLoop<N> {
@@ -391,10 +352,7 @@ where
     }
 }
 
-impl<const N: usize> EnterLoop<Mask<i32, N>> for VMask<N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> EnterLoop<Mask<i32, N>> for VMask<N> {
     type LoopState = VaryingLoop<N>;
     #[inline(always)]
     fn enter_loop(self, first_cond: Mask<i32, N>) -> VaryingLoop<N> {
@@ -402,10 +360,7 @@ where
     }
 }
 
-impl<const N: usize> EnterLoop<Mask<i32, N>> for VMaskGuard<N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> EnterLoop<Mask<i32, N>> for VMaskGuard<N> {
     type LoopState = VaryingLoop<N>;
     #[inline(always)]
     fn enter_loop(self, first_cond: Mask<i32, N>) -> VaryingLoop<N> {
@@ -423,47 +378,32 @@ where
     message = "cannot start an rustlane `for`/`loop` from context `{Self}`",
     label = "not an rustlane execution context"
 )]
-pub trait EnterLoopN<const N: usize>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+pub trait EnterLoopN<const N: usize> {
     fn enter_loop_n(self) -> VaryingLoop<N>;
 }
 
-impl<const N: usize> EnterLoopN<N> for AllOn
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> EnterLoopN<N> for AllOn {
     #[inline(always)]
     fn enter_loop_n(self) -> VaryingLoop<N> {
         VaryingLoop(Mask::splat(true))
     }
 }
 
-impl<const N: usize> EnterLoopN<N> for BoolGuard
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> EnterLoopN<N> for BoolGuard {
     #[inline(always)]
     fn enter_loop_n(self) -> VaryingLoop<N> {
         VaryingLoop(Mask::splat(self.0))
     }
 }
 
-impl<const N: usize> EnterLoopN<N> for VMask<N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> EnterLoopN<N> for VMask<N> {
     #[inline(always)]
     fn enter_loop_n(self) -> VaryingLoop<N> {
         VaryingLoop(self.0)
     }
 }
 
-impl<const N: usize> EnterLoopN<N> for VMaskGuard<N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> EnterLoopN<N> for VMaskGuard<N> {
     #[inline(always)]
     fn enter_loop_n(self) -> VaryingLoop<N> {
         VaryingLoop(self.0 & Mask::splat(self.1))
@@ -491,10 +431,7 @@ impl LoopCond<bool> for UniformLoop {
     }
 }
 
-impl<const N: usize> LoopCond<Mask<i32, N>> for VaryingLoop<N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> LoopCond<Mask<i32, N>> for VaryingLoop<N> {
     #[inline(always)]
     fn and_cond(self, cond: Mask<i32, N>) -> Self {
         VaryingLoop(self.0 & cond)
@@ -537,10 +474,7 @@ impl SpmdLoop for UniformLoop {
     }
 }
 
-impl<const N: usize> SpmdLoop for VaryingLoop<N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> SpmdLoop for VaryingLoop<N> {
     type IterExec = VMask<N>;
     #[inline(always)]
     fn any(self) -> bool {
@@ -582,40 +516,28 @@ impl LoopRemove<BoolGuard> for UniformLoop {
     }
 }
 
-impl<const N: usize> LoopRemove<AllOn> for VaryingLoop<N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> LoopRemove<AllOn> for VaryingLoop<N> {
     #[inline(always)]
     fn remove(&mut self, _exec: AllOn) {
         self.0 = Mask::splat(false);
     }
 }
 
-impl<const N: usize> LoopRemove<BoolGuard> for VaryingLoop<N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> LoopRemove<BoolGuard> for VaryingLoop<N> {
     #[inline(always)]
     fn remove(&mut self, exec: BoolGuard) {
         self.0 &= Mask::splat(!exec.0);
     }
 }
 
-impl<const N: usize> LoopRemove<VMask<N>> for VaryingLoop<N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> LoopRemove<VMask<N>> for VaryingLoop<N> {
     #[inline(always)]
     fn remove(&mut self, exec: VMask<N>) {
         self.0 &= !exec.0;
     }
 }
 
-impl<const N: usize> LoopRemove<VMaskGuard<N>> for VaryingLoop<N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> LoopRemove<VMaskGuard<N>> for VaryingLoop<N> {
     #[inline(always)]
     fn remove(&mut self, exec: VMaskGuard<N>) {
         self.0 &= !(exec.0 & Mask::splat(exec.1));
@@ -655,10 +577,7 @@ impl Refresh<UniformLoop> for BoolGuard {
     }
 }
 
-impl<const N: usize> Refresh<VaryingLoop<N>> for AllOn
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> Refresh<VaryingLoop<N>> for AllOn {
     type Out = VMask<N>;
     #[inline(always)]
     fn refresh(self, state: &VaryingLoop<N>) -> VMask<N> {
@@ -666,10 +585,7 @@ where
     }
 }
 
-impl<const N: usize> Refresh<VaryingLoop<N>> for BoolGuard
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> Refresh<VaryingLoop<N>> for BoolGuard {
     type Out = VMask<N>;
     #[inline(always)]
     fn refresh(self, state: &VaryingLoop<N>) -> VMask<N> {
@@ -677,10 +593,7 @@ where
     }
 }
 
-impl<const N: usize> Refresh<VaryingLoop<N>> for VMask<N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> Refresh<VaryingLoop<N>> for VMask<N> {
     type Out = VMask<N>;
     #[inline(always)]
     fn refresh(self, state: &VaryingLoop<N>) -> VMask<N> {
@@ -688,10 +601,7 @@ where
     }
 }
 
-impl<const N: usize> Refresh<VaryingLoop<N>> for VMaskGuard<N>
-where
-    LaneCount<N>: SupportedLaneCount,
-{
+impl<const N: usize> Refresh<VaryingLoop<N>> for VMaskGuard<N> {
     type Out = VMaskGuard<N>;
     #[inline(always)]
     fn refresh(self, state: &VaryingLoop<N>) -> VMaskGuard<N> {
