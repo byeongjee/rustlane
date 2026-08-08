@@ -2,7 +2,7 @@
 //!
 //! `#[kernel]` rewrites natural scalar-looking Rust (comparisons, `if`,
 //! `while`, `break`, indexing, ...) into the mask-threaded trait calls of
-//! `rustlane-core`.
+//! the `rustlane` runtime.
 //!
 //! The kernel-world macros (`foreach!`, `foreach_2d!`, `foreach_tiled!`,
 //! `unmasked!`, `cif!`, `cwhile!`) are expanded INLINE by `#[kernel]` itself;

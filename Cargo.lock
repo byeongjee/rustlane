@@ -64,7 +64,6 @@ dependencies = [
 name = "rustlane"
 version = "0.1.0"
 dependencies = [
- "rustlane-core",
  "rustlane-macros",
 ]
 
@@ -74,10 +73,6 @@ version = "0.1.0"
 dependencies = [
  "rustlane",
 ]
-
-[[package]]
-name = "rustlane-core"
-version = "0.1.0"
 
 [[package]]
 name = "rustlane-macros"

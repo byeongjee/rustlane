@@ -19,6 +19,6 @@ ispc-bench/options
 ispc-bench/rt
 ispc-bench/stencil
 ispc-bench/volume
-rustlane-core/LOWERING.md
+rustlane/LOWERING.md
 CLAUDE.md
 results/

@@ -1,5 +1,5 @@
 [workspace]
-members = ["rustlane-core", "rustlane-macros", "rustlane", "rustlane-bench"]
+members = ["rustlane-macros", "rustlane", "rustlane-bench"]
 resolver = "2"
 
 [profile.release]

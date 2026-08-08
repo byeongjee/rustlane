@@ -1,7 +1,7 @@
 #![feature(portable_simd)]
 
 use core::simd::Mask;
-use rustlane_core::prelude::*;
+use rustlane::prelude::*;
 
 const N: usize = 4;
 type Vf = Varying<f32, N>;

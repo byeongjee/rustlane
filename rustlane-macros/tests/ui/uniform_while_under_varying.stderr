@@ -14,7 +14,7 @@ help: the return type of this call is `bool` due to the type of the argument pas
 9 |     while k < 4 {
   |     ^^^^^ --- this argument influences the return type of `enter_loop`
 note: method defined here
- --> $WORKSPACE/rustlane-core/src/exec.rs
+ --> $WORKSPACE/rustlane/src/exec.rs
   |
   |     fn enter_loop(self, first_cond: C) -> Self::LoopState;
   |        ^^^^^^^^^^
@@ -31,7 +31,7 @@ error[E0308]: mismatched types
   = note: expected struct `Mask<i32, N>`
                found type `bool`
 note: method defined here
- --> $WORKSPACE/rustlane-core/src/exec.rs
+ --> $WORKSPACE/rustlane/src/exec.rs
   |
   |     fn and_cond(self, cond: C) -> Self;
   |        ^^^^^^^^
