@@ -117,9 +117,13 @@ fn main() {
         let start = Instant::now();
         for t in t0..t1 {
             if (t & 1) == 0 {
-                stencil_step(x0, x1, y0, y1, z0, z1, nx, nxy, c0, c1, c2, c3, &vsq, &a0, &mut a1);
+                stencil_step(
+                    x0, x1, y0, y1, z0, z1, nx, nxy, c0, c1, c2, c3, &vsq, &a0, &mut a1,
+                );
             } else {
-                stencil_step(x0, x1, y0, y1, z0, z1, nx, nxy, c0, c1, c2, c3, &vsq, &a1, &mut a0);
+                stencil_step(
+                    x0, x1, y0, y1, z0, z1, nx, nxy, c0, c1, c2, c3, &vsq, &a1, &mut a0,
+                );
             }
         }
         let ms = start.elapsed().as_secs_f64() * 1e3;

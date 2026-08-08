@@ -123,9 +123,7 @@ fn uniform_attr(attrs: &[Attribute]) -> Result<bool, Error> {
 
 fn emit(name: &Ident, vis: &Visibility, fields: &[FieldInfo]) -> TokenStream {
     let vname = format_ident!("Varying{}", name);
-    let all_varying = fields
-        .iter()
-        .all(|f| matches!(f.kind, FieldKind::Varying));
+    let all_varying = fields.iter().all(|f| matches!(f.kind, FieldKind::Varying));
 
     let struct_fields = fields.iter().map(|f| {
         let id = &f.ident;

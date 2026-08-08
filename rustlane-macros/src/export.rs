@@ -1,4 +1,3 @@
-
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
 use syn::visit_mut::{self, VisitMut};
@@ -6,7 +5,6 @@ use syn::{parse2, Error, FnArg, Ident, ItemFn, Pat, PathSegment, ReturnType, Typ
 
 use crate::kernel::{add_kernel_attrs, combine_errors, kernel_body, ret_mode_of, transform_sig};
 use crate::rewrite;
-
 
 #[derive(Clone, Copy, PartialEq)]
 enum Arch {
@@ -24,14 +22,43 @@ struct Target {
 }
 
 const X86_TARGETS: &[Target] = &[
-    Target { key: "avx512f", arch: Arch::X86_64, features: &["avx512f"], detect: &["avx512f"], n: 16 },
-    Target { key: "avx2", arch: Arch::X86_64, features: &["avx2", "fma"], detect: &["avx2", "fma"], n: 8 },
-    Target { key: "sse41", arch: Arch::X86_64, features: &["sse4.1"], detect: &["sse4.1"], n: 4 },
-    Target { key: "sse2", arch: Arch::X86_64, features: &[], detect: &[], n: 4 },
+    Target {
+        key: "avx512f",
+        arch: Arch::X86_64,
+        features: &["avx512f"],
+        detect: &["avx512f"],
+        n: 16,
+    },
+    Target {
+        key: "avx2",
+        arch: Arch::X86_64,
+        features: &["avx2", "fma"],
+        detect: &["avx2", "fma"],
+        n: 8,
+    },
+    Target {
+        key: "sse41",
+        arch: Arch::X86_64,
+        features: &["sse4.1"],
+        detect: &["sse4.1"],
+        n: 4,
+    },
+    Target {
+        key: "sse2",
+        arch: Arch::X86_64,
+        features: &[],
+        detect: &[],
+        n: 4,
+    },
 ];
 
-const NEON: Target =
-    Target { key: "neon", arch: Arch::Aarch64, features: &[], detect: &[], n: 8 };
+const NEON: Target = Target {
+    key: "neon",
+    arch: Arch::Aarch64,
+    features: &[],
+    detect: &[],
+    n: 8,
+};
 
 fn lookup_target(name: &str) -> Option<Target> {
     match name {
@@ -43,7 +70,6 @@ fn lookup_target(name: &str) -> Option<Target> {
         _ => None,
     }
 }
-
 
 fn parse_targets(attr: TokenStream) -> Result<Vec<Target>, Error> {
     if attr.is_empty() {
@@ -96,7 +122,6 @@ fn parse_targets(attr: TokenStream) -> Result<Vec<Target>, Error> {
     Ok(out)
 }
 
-
 struct VaryingFinder {
     hit: Option<Span>,
 }
@@ -148,7 +173,6 @@ fn collect_args(func: &ItemFn) -> (Vec<Ident>, Vec<Type>) {
     }
     (names, types)
 }
-
 
 pub fn expand(attr: TokenStream, item: TokenStream) -> TokenStream {
     let targets = match parse_targets(attr) {
@@ -203,7 +227,15 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> TokenStream {
     let impl_body = kernel_body(&stmts);
 
     let dispatch = gen_dispatch(
-        &name, &impl_name, &vis, &user_attrs, &inputs, &output, &arg_names, &arg_types, &targets,
+        &name,
+        &impl_name,
+        &vis,
+        &user_attrs,
+        &inputs,
+        &output,
+        &arg_names,
+        &arg_types,
+        &targets,
     );
 
     quote! {
@@ -213,7 +245,6 @@ pub fn expand(attr: TokenStream, item: TokenStream) -> TokenStream {
         #dispatch
     }
 }
-
 
 #[allow(clippy::too_many_arguments)]
 fn gen_dispatch(
@@ -268,7 +299,10 @@ fn gen_dispatch(
         let mut probes: Vec<TokenStream> = Vec::new();
         for t in &x86[..x86.len() - 1] {
             let shim = format_ident!("__{}_{}", name, t.key);
-            let checks = t.detect.iter().map(|d| quote! { is_x86_feature_detected!(#d) });
+            let checks = t
+                .detect
+                .iter()
+                .map(|d| quote! { is_x86_feature_detected!(#d) });
             probes.push(quote! {
                 if #(#checks)&&* { return #shim; }
             });

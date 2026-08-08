@@ -1004,7 +1004,8 @@ fn k_adv_gather_cond(tbl: &[i32], x: Varying<i32>) -> Varying<i32> {
 
 #[test]
 fn adv_gather_in_while_cond() {
-    let table: [i32; 16] = std::array::from_fn(|i| if i % 5 == 0 { -1 } else { (i as i32 % 4) + 1 });
+    let table: [i32; 16] =
+        std::array::from_fn(|i| if i % 5 == 0 { -1 } else { (i as i32 % 4) + 1 });
     assert_kernel_matches_scalar!(int, range = 25, tbl = table, k_adv_gather_cond, |x| {
         let mut j = x & 7;
         let mut acc = 0;

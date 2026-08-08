@@ -80,7 +80,11 @@ fn ref_cross(a: Vec3, b: Vec3) -> Vec3 {
 }
 fn ref_normalize(a: Vec3) -> Vec3 {
     let inv = 1.0 / (a.x * a.x + a.y * a.y + a.z * a.z).sqrt();
-    Vec3 { x: a.x * inv, y: a.y * inv, z: a.z * inv }
+    Vec3 {
+        x: a.x * inv,
+        y: a.y * inv,
+        z: a.z * inv,
+    }
 }
 fn ref_choose_dot(sel: f32, a: Vec3, b: Vec3, c: Vec3) -> f32 {
     let p = if sel > 1.0 {
@@ -123,11 +127,19 @@ fn approx_v3(a: Vec3, b: Vec3) -> bool {
 
 fn sample(l: usize) -> Vec3 {
     let f = l as f32;
-    Vec3 { x: 1.0 + f, y: 2.0 - 0.5 * f, z: -1.0 + 0.25 * f }
+    Vec3 {
+        x: 1.0 + f,
+        y: 2.0 - 0.5 * f,
+        z: -1.0 + 0.25 * f,
+    }
 }
 fn sample2(l: usize) -> Vec3 {
     let f = l as f32;
-    Vec3 { x: 0.5 * f - 1.0, y: 3.0 - f, z: 2.0 + 0.5 * f }
+    Vec3 {
+        x: 0.5 * f - 1.0,
+        y: 3.0 - f,
+        z: 2.0 + 0.5 * f,
+    }
 }
 
 #[test]
@@ -138,9 +150,18 @@ fn methods_dot_cross_normalize() {
     let c8 = Vec3::cross::<8, _>(AllOn, a8, b8);
     let n8 = Vec3::normalize::<8, _>(AllOn, a8);
     for l in 0..8 {
-        assert!(approx(d8.to_array()[l], ref_dot(sample(l), sample2(l))), "dot lane {l}");
-        assert!(approx_v3(v3_lane(c8, l), ref_cross(sample(l), sample2(l))), "cross lane {l}");
-        assert!(approx_v3(v3_lane(n8, l), ref_normalize(sample(l))), "normalize lane {l}");
+        assert!(
+            approx(d8.to_array()[l], ref_dot(sample(l), sample2(l))),
+            "dot lane {l}"
+        );
+        assert!(
+            approx_v3(v3_lane(c8, l), ref_cross(sample(l), sample2(l))),
+            "cross lane {l}"
+        );
+        assert!(
+            approx_v3(v3_lane(n8, l), ref_normalize(sample(l))),
+            "normalize lane {l}"
+        );
     }
     for l in 0..8 {
         let a1 = v3_lanes::<1>(|_| sample(l));
@@ -150,14 +171,24 @@ fn methods_dot_cross_normalize() {
             d8.to_array()[l],
             "dot N=1 vs N=8 lane {l}"
         );
-        assert_eq!(v3_lane(Vec3::cross::<1, _>(AllOn, a1, b1), 0), v3_lane(c8, l));
-        assert_eq!(v3_lane(Vec3::normalize::<1, _>(AllOn, a1), 0), v3_lane(n8, l));
+        assert_eq!(
+            v3_lane(Vec3::cross::<1, _>(AllOn, a1, b1), 0),
+            v3_lane(c8, l)
+        );
+        assert_eq!(
+            v3_lane(Vec3::normalize::<1, _>(AllOn, a1), 0),
+            v3_lane(n8, l)
+        );
     }
 }
 
 #[test]
 fn nested_varying_control_flow() {
-    let third = |l: usize| Vec3 { x: l as f32, y: 1.0, z: 2.0 };
+    let third = |l: usize| Vec3 {
+        x: l as f32,
+        y: 1.0,
+        z: 2.0,
+    };
     let sels = [-1.0f32, 0.5, 1.5, 2.0, 0.0, 0.9, 1.1, -0.3];
     let a8 = v3_lanes::<8>(sample);
     let b8 = v3_lanes::<8>(sample2);
@@ -172,19 +203,31 @@ fn nested_varying_control_flow() {
         let b1 = v3_lanes::<1>(|_| sample2(l));
         let c1 = v3_lanes::<1>(|_| third(l));
         let r1 = choose_dot::<1, _>(AllOn, Varying::from_array([sels[l]]), a1, b1, c1);
-        assert_eq!(r1.to_array()[0], r8.to_array()[l], "choose_dot N=1 vs N=8 lane {l}");
+        assert_eq!(
+            r1.to_array()[0],
+            r8.to_array()[l],
+            "choose_dot N=1 vs N=8 lane {l}"
+        );
     }
 }
 
 #[test]
 fn aos_gather_vec3() {
     let data: Vec<Vec3> = (0..6)
-        .map(|i| Vec3 { x: i as f32, y: 10.0 + i as f32, z: 20.0 + i as f32 })
+        .map(|i| Vec3 {
+            x: i as f32,
+            y: 10.0 + i as f32,
+            z: 20.0 + i as f32,
+        })
         .collect();
     let idx8 = Varying::<i32, 8>::from_array([5, 0, 3, 1, 4, 2, 0, 5]);
     let g8 = VaryingVec3::gather(&data, idx8, AllOn);
     for l in 0..8 {
-        assert_eq!(v3_lane(g8, l), data[idx8.to_array()[l] as usize], "gather lane {l}");
+        assert_eq!(
+            v3_lane(g8, l),
+            data[idx8.to_array()[l] as usize],
+            "gather lane {l}"
+        );
     }
     let m = VMask::<8>(Mask::from_array([
         true, false, true, false, true, false, true, false,
@@ -193,14 +236,29 @@ fn aos_gather_vec3() {
     let gm = VaryingVec3::gather(&data, idxm, m);
     for l in 0..8 {
         if l % 2 == 0 {
-            assert_eq!(v3_lane(gm, l), data[idxm.to_array()[l] as usize], "masked gather lane {l}");
+            assert_eq!(
+                v3_lane(gm, l),
+                data[idxm.to_array()[l] as usize],
+                "masked gather lane {l}"
+            );
         } else {
-            assert_eq!(v3_lane(gm, l), Vec3 { x: 0.0, y: 0.0, z: 0.0 }, "masked-off lane {l}");
+            assert_eq!(
+                v3_lane(gm, l),
+                Vec3 {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0
+                },
+                "masked-off lane {l}"
+            );
         }
     }
     for l in 0..8 {
         let i1 = Varying::<i32, 1>::from_array([idx8.to_array()[l]]);
-        assert_eq!(v3_lane(VaryingVec3::gather(&data, i1, AllOn), 0), v3_lane(g8, l));
+        assert_eq!(
+            v3_lane(VaryingVec3::gather(&data, i1, AllOn), 0),
+            v3_lane(g8, l)
+        );
     }
 }
 
@@ -208,8 +266,16 @@ fn aos_gather_vec3() {
 fn aos_gather_nested_ray() {
     let rays: Vec<Ray> = (0..4)
         .map(|i| Ray {
-            origin: Vec3 { x: i as f32, y: i as f32 + 0.5, z: i as f32 + 0.25 },
-            dir: Vec3 { x: -(i as f32), y: 1.0, z: 0.0 },
+            origin: Vec3 {
+                x: i as f32,
+                y: i as f32 + 0.5,
+                z: i as f32 + 0.25,
+            },
+            dir: Vec3 {
+                x: -(i as f32),
+                y: 1.0,
+                z: 0.0,
+            },
         })
         .collect();
     let idx = Varying::<i32, 8>::from_array([3, 0, 2, 1, 0, 3, 1, 2]);

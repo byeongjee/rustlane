@@ -109,7 +109,9 @@ pub fn reduce_add_masked<T: ReduceElem, const N: usize>(v: Varying<T, N>, mask: 
 where
     LaneCount<N>: SupportedLaneCount,
 {
-    let sel = mask.cast::<T::Mask>().select(v.0, Simd::splat(T::ADD_IDENT));
+    let sel = mask
+        .cast::<T::Mask>()
+        .select(v.0, Simd::splat(T::ADD_IDENT));
     T::vreduce_add(sel)
 }
 
@@ -120,7 +122,9 @@ pub fn reduce_min_masked<T: ReduceElem, const N: usize>(v: Varying<T, N>, mask: 
 where
     LaneCount<N>: SupportedLaneCount,
 {
-    let sel = mask.cast::<T::Mask>().select(v.0, Simd::splat(T::MIN_IDENT));
+    let sel = mask
+        .cast::<T::Mask>()
+        .select(v.0, Simd::splat(T::MIN_IDENT));
     T::vreduce_min(sel)
 }
 
@@ -131,7 +135,9 @@ pub fn reduce_max_masked<T: ReduceElem, const N: usize>(v: Varying<T, N>, mask: 
 where
     LaneCount<N>: SupportedLaneCount,
 {
-    let sel = mask.cast::<T::Mask>().select(v.0, Simd::splat(T::MAX_IDENT));
+    let sel = mask
+        .cast::<T::Mask>()
+        .select(v.0, Simd::splat(T::MAX_IDENT));
     T::vreduce_max(sel)
 }
 
@@ -253,8 +259,13 @@ where
     let mut d = 1usize;
     while d < N {
         let a = x.to_array();
-        let shifted: Simd<T, N> =
-            Simd::from_array(core::array::from_fn(|i| if i >= d { a[i - d] } else { T::ADD_IDENT }));
+        let shifted: Simd<T, N> = Simd::from_array(core::array::from_fn(|i| {
+            if i >= d {
+                a[i - d]
+            } else {
+                T::ADD_IDENT
+            }
+        }));
         x = x + shifted;
         d <<= 1;
     }
@@ -369,12 +380,18 @@ mod tests {
 
     #[test]
     fn mask_predicates() {
-        assert!(any(mask([false, false, true, false, false, false, false, false])));
+        assert!(any(mask([
+            false, false, true, false, false, false, false, false
+        ])));
         assert!(!any(mask([false; N])));
         assert!(all(mask([true; N])));
-        assert!(!all(mask([true, true, true, true, true, true, true, false])));
+        assert!(!all(mask([
+            true, true, true, true, true, true, true, false
+        ])));
         assert!(none(mask([false; N])));
-        assert!(!none(mask([false, false, false, false, false, false, false, true])));
+        assert!(!none(mask([
+            false, false, false, false, false, false, false, true
+        ])));
     }
 
     #[test]
@@ -421,7 +438,10 @@ mod tests {
             [0, 1, 3, 6, 10, 15, 21, 28]
         );
         let ones = Vi::splat(1);
-        assert_eq!(exclusive_scan_add(ones).to_array(), [0, 1, 2, 3, 4, 5, 6, 7]);
+        assert_eq!(
+            exclusive_scan_add(ones).to_array(),
+            [0, 1, 2, 3, 4, 5, 6, 7]
+        );
 
         let f = Vf::from_array([2.0, -1.0, 3.5, 0.5, 4.0, 1.0, -2.0, 6.0]);
         let scan = exclusive_scan_add(f).to_array();

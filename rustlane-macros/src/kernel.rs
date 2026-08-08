@@ -2,8 +2,8 @@ use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::visit_mut::VisitMut;
 use syn::{
-    parse_quote, Attribute, Error, FnArg, GenericParam, Ident, ImplItem, Item, ItemFn,
-    ItemImpl, Pat, PathArguments, PathSegment, ReturnType, Signature, Stmt, Type,
+    parse_quote, Attribute, Error, FnArg, GenericParam, Ident, ImplItem, Item, ItemFn, ItemImpl,
+    Pat, PathArguments, PathSegment, ReturnType, Signature, Stmt, Type,
 };
 
 use crate::rewrite::{self, RetMode};
@@ -242,8 +242,10 @@ pub fn widen_path(p: &mut syn::Path) {
 pub fn check_reserved(id: &Ident) -> Option<&'static str> {
     let s = id.to_string();
     if s == "N" {
-        Some("`N` is reserved inside #[kernel]: it names the lane-count const parameter \
-              (you may read it, but not bind it)")
+        Some(
+            "`N` is reserved inside #[kernel]: it names the lane-count const parameter \
+              (you may read it, but not bind it)",
+        )
     } else if s.starts_with("__") {
         Some("identifiers starting with `__` are reserved by #[kernel] machinery")
     } else {

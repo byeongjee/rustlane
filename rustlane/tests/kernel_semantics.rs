@@ -276,9 +276,7 @@ fn k_grid(w: usize, a: &[f32], out: &mut [f32]) {
 fn foreach_2d_with_tail() {
     let (h, w) = (3usize, 13usize);
     let a: Vec<f32> = (0..h * w).map(|i| i as f32 * 0.3).collect();
-    let want: Vec<f32> = (0..h * w)
-        .map(|i| a[i] * 2.0 + (i / w) as f32)
-        .collect();
+    let want: Vec<f32> = (0..h * w).map(|i| a[i] * 2.0 + (i / w) as f32).collect();
 
     let mut out8 = vec![0.0f32; h * w];
     k_grid::<8, _>(AllOn, w, &a, &mut out8);
@@ -308,13 +306,21 @@ fn foreach_tiled_covers_each_cell_once() {
     let mut counts8 = vec![0i32; h * w];
     let mut vals8 = vec![-1i32; h * w];
     k_tiled::<8, _>(AllOn, w as i32, &mut counts8, &mut vals8);
-    assert_eq!(counts8, vec![1i32; h * w], "foreach_tiled N=8: visit counts");
+    assert_eq!(
+        counts8,
+        vec![1i32; h * w],
+        "foreach_tiled N=8: visit counts"
+    );
     assert_eq!(vals8, want_vals, "foreach_tiled N=8: coordinates");
 
     let mut counts1 = vec![0i32; h * w];
     let mut vals1 = vec![-1i32; h * w];
     k_tiled::<1, _>(AllOn, w as i32, &mut counts1, &mut vals1);
-    assert_eq!(counts1, vec![1i32; h * w], "foreach_tiled N=1: visit counts");
+    assert_eq!(
+        counts1,
+        vec![1i32; h * w],
+        "foreach_tiled N=1: visit counts"
+    );
     assert_eq!(vals1, want_vals, "foreach_tiled N=1: coordinates");
 }
 

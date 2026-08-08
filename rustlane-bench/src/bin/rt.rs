@@ -158,8 +158,16 @@ mod scene {
                 y: Varying::splat(oy),
                 z: Varying::splat(oz),
             },
-            dir: V3 { x: dirx, y: diry, z: dirz },
-            inv_dir: V3 { x: invx, y: invy, z: invz },
+            dir: V3 {
+                x: dirx,
+                y: diry,
+                z: dirz,
+            },
+            inv_dir: V3 {
+                x: invx,
+                y: invy,
+                z: invz,
+            },
             dir_is_neg,
         }
     }
@@ -380,11 +388,21 @@ fn load_bvh() -> (Vec<BvhNode>, Vec<Triangle>) {
     let mut nodes = Vec::with_capacity(n_nodes);
     for _ in 0..n_nodes {
         let bmin = [rd_f32(&b, off), rd_f32(&b, off + 4), rd_f32(&b, off + 8)];
-        let bmax = [rd_f32(&b, off + 12), rd_f32(&b, off + 16), rd_f32(&b, off + 20)];
+        let bmax = [
+            rd_f32(&b, off + 12),
+            rd_f32(&b, off + 16),
+            rd_f32(&b, off + 20),
+        ];
         let offset = rd_u32(&b, off + 24);
         let n_primitives = b[off + 28];
         let split_axis = b[off + 29];
-        nodes.push(BvhNode { bmin, bmax, offset, n_primitives, split_axis });
+        nodes.push(BvhNode {
+            bmin,
+            bmax,
+            offset,
+            n_primitives,
+            split_axis,
+        });
         off += 32;
     }
     let n_tris = rd_u32(&b, off) as usize;
@@ -399,7 +417,10 @@ fn load_bvh() -> (Vec<BvhNode>, Vec<Triangle>) {
             p[j][2] = rd_f32(&b, vp + 8);
             vp += 12;
         }
-        tris.push(Triangle { p, id: (i + 1) as i32 });
+        tris.push(Triangle {
+            p,
+            id: (i + 1) as i32,
+        });
         off += 36;
     }
     (nodes, tris)
@@ -424,12 +445,34 @@ fn main() {
 
     let (warmup, reps) = (3usize, 15usize);
     for _ in 0..warmup {
-        raytrace(width, height, base_width, base_height, &r2c, &c2w, &mut image, &mut id, &nodes, &tris);
+        raytrace(
+            width,
+            height,
+            base_width,
+            base_height,
+            &r2c,
+            &c2w,
+            &mut image,
+            &mut id,
+            &nodes,
+            &tris,
+        );
     }
     let mut best = f64::INFINITY;
     for _ in 0..reps {
         let t0 = Instant::now();
-        raytrace(width, height, base_width, base_height, &r2c, &c2w, &mut image, &mut id, &nodes, &tris);
+        raytrace(
+            width,
+            height,
+            base_width,
+            base_height,
+            &r2c,
+            &c2w,
+            &mut image,
+            &mut id,
+            &nodes,
+            &tris,
+        );
         let dt = t0.elapsed().as_secs_f64() * 1e3;
         if dt < best {
             best = dt;

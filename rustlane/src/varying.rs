@@ -6,9 +6,8 @@
 
 use crate::exec::{AllOn, BoolGuard, MaskedAssign, VMask, VMaskGuard};
 use core::ops::{
-    Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Div,
-    DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Shl, ShlAssign, Shr, ShrAssign, Sub,
-    SubAssign,
+    Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Div, DivAssign,
+    Mul, MulAssign, Neg, Rem, RemAssign, Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign,
 };
 use core::simd::{LaneCount, Mask, Simd, SimdCast, SimdElement, SupportedLaneCount};
 
@@ -488,7 +487,10 @@ mod tests {
         assert_eq!((v ^ v).to_array(), [0; N]);
         assert_eq!((v << 1).to_array(), [2, 4, 6, 8]);
         assert_eq!((v >> 1).to_array(), [0, 1, 1, 2]);
-        assert_eq!((1i32 << Vi::from_array([0, 1, 2, 3])).to_array(), [1, 2, 4, 8]);
+        assert_eq!(
+            (1i32 << Vi::from_array([0, 1, 2, 3])).to_array(),
+            [1, 2, 4, 8]
+        );
         let mut a = v;
         a <<= 2;
         a >>= Vi::splat(2);

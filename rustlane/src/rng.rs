@@ -106,15 +106,31 @@ mod tests {
     use super::*;
 
     const VECTORS: &[(u32, [u32; 4], [u32; 3])] = &[
-        (0x1, [1, 3203395596, 65536, 16777216], [0xfb3f5128, 0xbcff80e6, 0xbbb4200a]),
-        (0x2a, [42, 3203395623, 2752512, 704643072], [0xee106289, 0x9aff5462, 0xee091f2b]),
+        (
+            0x1,
+            [1, 3203395596, 65536, 16777216],
+            [0xfb3f5128, 0xbcff80e6, 0xbbb4200a],
+        ),
+        (
+            0x2a,
+            [42, 3203395623, 2752512, 704643072],
+            [0xee106289, 0x9aff5462, 0xee091f2b],
+        ),
         (
             0x12345678,
             [305419896, 2900076149, 1450709556, 2018915346],
             [0x1008d415, 0x58c11c4d, 0x8ebb09ea],
         ),
-        (0x7, [7, 3203395594, 458752, 117440512], [0xf8243728, 0x50fcb1be, 0x7904ef6a]),
-        (0x0, [0, 3203395597, 0, 0], [0xfbbfc028, 0xeeff00a2, 0xbbfc028a]),
+        (
+            0x7,
+            [7, 3203395594, 458752, 117440512],
+            [0xf8243728, 0x50fcb1be, 0x7904ef6a],
+        ),
+        (
+            0x0,
+            [0, 3203395597, 0, 0],
+            [0xfbbfc028, 0xeeff00a2, 0xbbfc028a],
+        ),
     ];
 
     struct ScalarRng {
@@ -129,7 +145,9 @@ mod tests {
                 | ((seed & 0xff00) << 8)
                 | ((seed & 0xff0000) >> 8)
                 | ((seed & 0xff000000) >> 24);
-            ScalarRng { z: [z1, z2, z3, z4] }
+            ScalarRng {
+                z: [z1, z2, z3, z4],
+            }
         }
         fn next(&mut self) -> u32 {
             let [mut z1, mut z2, mut z3, mut z4] = self.z;
@@ -167,7 +185,11 @@ mod tests {
             let mut s = RNGState::<8>::new(Varying::splat(seed));
             for &expect in &outs {
                 let got = s.random_u32();
-                assert_eq!(got.to_array(), [expect; 8], "seed={seed:#x} expect={expect:#010x}");
+                assert_eq!(
+                    got.to_array(),
+                    [expect; 8],
+                    "seed={seed:#x} expect={expect:#010x}"
+                );
             }
         }
     }

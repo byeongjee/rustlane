@@ -7,7 +7,6 @@ const N: usize = 4;
 type Vf = Varying<f32, N>;
 type Vi = Varying<i32, N>;
 
-
 fn foreach_scale(a: &[f32], out: &mut [f32]) {
     let __exec = AllOn;
     let _ = __exec;
@@ -38,7 +37,6 @@ fn foreach_template_main_and_tail() {
     let want: Vec<f32> = a.iter().map(|x| x * 2.0 + 1.0).collect();
     assert_eq!(out, want);
 }
-
 
 fn if_else_compound(x: Vf, t: f32) -> (Vf, Vf) {
     let __exec = AllOn;
@@ -93,7 +91,6 @@ fn if_else_uniform_template() {
     assert_eq!(if_else_uniform(false).to_array(), [-1.0; N]);
 }
 
-
 fn masked_scatter_increment(hist: &mut [i32], idx: Vi, sel: Vi) {
     let __exec = AllOn;
     {
@@ -109,10 +106,13 @@ fn masked_scatter_increment(hist: &mut [i32], idx: Vi, sel: Vi) {
 #[test]
 fn gather_modify_scatter_template() {
     let mut hist = [10i32, 20, 30, 40, 50];
-    masked_scatter_increment(&mut hist, Vi::from_array([4, 0, 2, 1]), Vi::from_array([1, 0, 5, -1]));
+    masked_scatter_increment(
+        &mut hist,
+        Vi::from_array([4, 0, 2, 1]),
+        Vi::from_array([1, 0, 5, -1]),
+    );
     assert_eq!(hist, [10, 20, 31, 40, 51]);
 }
-
 
 #[test]
 fn logical_and_cast_and_literal_index_emissions() {
@@ -141,7 +141,6 @@ fn logical_and_cast_and_literal_index_emissions() {
     assert_eq!(xg.to_array(), [0, 3, 0, 3]);
 }
 
-
 fn stencil_row(a: &[f32], out: &mut [f32], base: usize, c0: f32, c1: f32) {
     let __exec = AllOn;
     let index = LinearIndex::<N>::new(base);
@@ -166,7 +165,6 @@ fn stencil_linear_offsets() {
     let l = a.spmd_read(li, AllOn);
     assert_eq!(g.to_array(), l.to_array());
 }
-
 
 const STEPS: usize = 8;
 
@@ -225,7 +223,6 @@ fn binomial_local_varying_array() {
     }
 }
 
-
 fn tri_hit_shape(b1: Vf, t: Vf, mint: f32, maxt: f32) -> Mask<i32, N> {
     let __exec = AllOn;
     let mut hit: Mask<i32, N> = Mask::splat(true);
@@ -276,8 +273,16 @@ fn varying_bool_local_mask_lvalue() {
     assert_eq!(r.to_array(), [true, false, true, false]);
 }
 
-
-fn raymarch_shape(density: &[f32], nx: i32, ny: i32, t1: Vf, cut: f32, vx: Vi, vy: Vi, vz: Vi) -> Vf {
+fn raymarch_shape(
+    density: &[f32],
+    nx: i32,
+    ny: i32,
+    t1: Vf,
+    cut: f32,
+    vx: Vi,
+    vy: Vi,
+    vz: Vi,
+) -> Vf {
     let __exec = AllOn;
     let mut tau = Varying::<f32, N>::splat(0.0);
     let mut t = Varying::<f32, N>::splat(0.0);
@@ -338,7 +343,6 @@ fn volume_while_break_clamp_gather() {
     }
 }
 
-
 #[test]
 fn ao_scatter_add_shape() {
     let mut image = [0.0f32; 2];
@@ -356,7 +360,6 @@ fn ao_scatter_add_shape() {
     assert_eq!(image, [0.25, 1.0]);
 }
 
-
 #[test]
 fn ao_rng_math_shape() {
     let y0 = 3i32;
@@ -369,9 +372,7 @@ fn ao_rng_math_shape() {
     let phi = rng.frandom() * (2.0f32 * core::f32::consts::PI);
     let x = math::cos(phi) * theta;
     let y = math::sin(phi) * theta;
-    let z = math::sqrt(math::abs(
-        Varying::splat(1.0f32) - theta * theta,
-    ));
+    let z = math::sqrt(math::abs(Varying::splat(1.0f32) - theta * theta));
     let len2 = x * x + y * y + z * z;
     for l in len2.to_array() {
         assert!((l - 1.0).abs() < 1e-4, "unit dir, got {l}");

@@ -281,16 +281,26 @@ fn volume_render(
 }
 
 const CAMERA_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../ispc-bench/camera.dat");
-const VOLUME_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../ispc-bench/density_lowres.vol");
-const REF_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../ispc-ref/ref-out/volume.bin");
+const VOLUME_PATH: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../ispc-bench/density_lowres.vol"
+);
+const REF_PATH: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../ispc-ref/ref-out/volume.bin"
+);
 
 fn load_camera() -> (usize, usize, Vec<f32>, Vec<f32>) {
     let text = std::fs::read_to_string(CAMERA_PATH).expect("read camera.dat");
     let mut it = text.split_whitespace();
     let width: usize = it.next().unwrap().parse().unwrap();
     let height: usize = it.next().unwrap().parse().unwrap();
-    let r2c: Vec<f32> = (0..16).map(|_| it.next().unwrap().parse().unwrap()).collect();
-    let c2w: Vec<f32> = (0..16).map(|_| it.next().unwrap().parse().unwrap()).collect();
+    let r2c: Vec<f32> = (0..16)
+        .map(|_| it.next().unwrap().parse().unwrap())
+        .collect();
+    let c2w: Vec<f32> = (0..16)
+        .map(|_| it.next().unwrap().parse().unwrap())
+        .collect();
     (width, height, r2c, c2w)
 }
 
@@ -301,7 +311,9 @@ fn load_volume() -> (i32, i32, i32, Vec<f32>) {
     let ny: i32 = it.next().unwrap().parse().unwrap();
     let nz: i32 = it.next().unwrap().parse().unwrap();
     let count = (nx * ny * nz) as usize;
-    let density: Vec<f32> = (0..count).map(|_| it.next().unwrap().parse().unwrap()).collect();
+    let density: Vec<f32> = (0..count)
+        .map(|_| it.next().unwrap().parse().unwrap())
+        .collect();
     (nx, ny, nz, density)
 }
 
@@ -322,7 +334,15 @@ fn main() {
 
     let call = |img: &mut [f32]| {
         volume_render(
-            &density, nx, ny, nz, &r2c, &c2w, width as i32, height as i32, img,
+            &density,
+            nx,
+            ny,
+            nz,
+            &r2c,
+            &c2w,
+            width as i32,
+            height as i32,
+            img,
         );
     };
 
@@ -371,7 +391,10 @@ fn main() {
 
     println!("MS {:.3}", best);
     println!("CHECKSUM {:.6}", checksum);
-    println!("workload {}x{} image, {}x{}x{} volume", width, height, nx, ny, nz);
+    println!(
+        "workload {}x{} image, {}x{}x{} volume",
+        width, height, nx, ny, nz
+    );
     println!(
         "VALIDATION ref_checksum={:.6} checksum_rel={:.3e} max_rel={:.3e} max_abs={:.3e} mismatches={}/{}",
         ref_checksum, checksum_rel, max_rel, max_abs, mism, npix

@@ -15,8 +15,8 @@ fn cnd(x: Varying<f32>) -> Varying<f32> {
     let k5 = k3 * k2;
 
     let inv_sqrt_2pi = 0.39894228040f32;
-    let mut w = 0.31938153 * k - 0.356563782 * k2 + 1.781477937 * k3
-        - 1.821255978 * k4 + 1.330274429 * k5;
+    let mut w =
+        0.31938153 * k - 0.356563782 * k2 + 1.781477937 * k3 - 1.821255978 * k4 + 1.330274429 * k5;
     w = w * (inv_sqrt_2pi * math::exp(-l * l * 0.5));
 
     if x > 0.0 {
@@ -196,11 +196,17 @@ fn main() {
     println!("SUM bs={:.6} binomial={:.6}", sum_bs, sum_bin);
 
     let ref_bs = load_ref(
-        concat!(env!("CARGO_MANIFEST_DIR"), "/../ispc-ref/ref-out/options_bs.bin"),
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../ispc-ref/ref-out/options_bs.bin"
+        ),
         N_OPTIONS,
     );
     let ref_bin = load_ref(
-        concat!(env!("CARGO_MANIFEST_DIR"), "/../ispc-ref/ref-out/options_binomial.bin"),
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../ispc-ref/ref-out/options_binomial.bin"
+        ),
         N_OPTIONS,
     );
 

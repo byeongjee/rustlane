@@ -144,9 +144,7 @@ impl Rewriter {
         fn walk(ts: proc_macro2::TokenStream, errors: &mut Vec<Error>) {
             for tt in ts {
                 match tt {
-                    proc_macro2::TokenTree::Ident(id)
-                        if id.to_string().starts_with("__") =>
-                    {
+                    proc_macro2::TokenTree::Ident(id) if id.to_string().starts_with("__") => {
                         errors.push(Error::new(
                             id.span(),
                             "identifiers starting with `__` are reserved by #[kernel] machinery",
@@ -208,7 +206,10 @@ impl Rewriter {
                     Pat::Ident(pi) => {
                         self.check_ident(&pi.ident);
                         if pi.subpat.is_some() {
-                            self.err(&l.pat, "`ident @ pattern` bindings are not supported in #[kernel]");
+                            self.err(
+                                &l.pat,
+                                "`ident @ pattern` bindings are not supported in #[kernel]",
+                            );
                         }
                     }
                     Pat::Wild(_) => {}
@@ -242,11 +243,17 @@ impl Rewriter {
                 out.push(Stmt::Local(l));
             }
             Stmt::Item(i) => {
-                self.err(&i, "item definitions inside #[kernel] bodies are not supported");
+                self.err(
+                    &i,
+                    "item definitions inside #[kernel] bodies are not supported",
+                );
             }
             Stmt::Macro(m) => {
                 if !m.attrs.is_empty() {
-                    self.err(&m.attrs[0], "attributes on kernel statements are not supported");
+                    self.err(
+                        &m.attrs[0],
+                        "attributes on kernel statements are not supported",
+                    );
                 }
                 self.emit_macro(m.mac, following, out);
             }
@@ -267,7 +274,10 @@ impl Rewriter {
             Expr::Return(r) => self.emit_return(r, following, out),
             Expr::Macro(m) => {
                 if !m.attrs.is_empty() {
-                    self.err(&m.attrs[0], "attributes on kernel statements are not supported");
+                    self.err(
+                        &m.attrs[0],
+                        "attributes on kernel statements are not supported",
+                    );
                 }
                 self.emit_macro(m.mac, following, out);
             }
@@ -294,7 +304,10 @@ impl Rewriter {
         let s = scan_expr(&whole);
         let Expr::If(i) = whole else { unreachable!() };
         if !i.attrs.is_empty() {
-            self.err(&i.attrs[0], "attributes on kernel statements are not supported");
+            self.err(
+                &i.attrs[0],
+                "attributes on kernel statements are not supported",
+            );
         }
         let sp = i.if_token.span;
         let else_expr = i.else_branch.map(|(_, e)| *e);
@@ -354,13 +367,19 @@ impl Rewriter {
 
     fn emit_while(&mut self, w: ExprWhile, out: &mut Vec<Stmt>) {
         if !w.attrs.is_empty() {
-            self.err(&w.attrs[0], "attributes on kernel statements are not supported");
+            self.err(
+                &w.attrs[0],
+                "attributes on kernel statements are not supported",
+            );
         }
         if let Some(lbl) = &w.label {
             self.err(lbl, "labeled loops are not supported in #[kernel] (masks target the innermost loop only)");
         }
         if matches!(&*w.cond, Expr::Let(_)) {
-            self.err(&w.cond, "`while let` is not supported in #[kernel]; use a plain condition");
+            self.err(
+                &w.cond,
+                "`while let` is not supported in #[kernel]; use a plain condition",
+            );
             return;
         }
         let sp = w.while_token.span;
@@ -433,7 +452,10 @@ impl Rewriter {
 
     fn emit_for(&mut self, f: ExprForLoop, out: &mut Vec<Stmt>) {
         if !f.attrs.is_empty() {
-            self.err(&f.attrs[0], "attributes on kernel statements are not supported");
+            self.err(
+                &f.attrs[0],
+                "attributes on kernel statements are not supported",
+            );
         }
         if let Some(lbl) = &f.label {
             self.err(lbl, "labeled loops are not supported in #[kernel] (masks target the innermost loop only)");
@@ -478,8 +500,9 @@ impl Rewriter {
         let body_stmts = self.rewrite_block(f.body).stmts;
         self.loops.pop();
 
-        let iter_decl: Option<Stmt> =
-            iid.as_ref().map(|iid| parse_quote_spanned!(sp=> let mut #iid = #lid.iter_mask();));
+        let iter_decl: Option<Stmt> = iid
+            .as_ref()
+            .map(|iid| parse_quote_spanned!(sp=> let mut #iid = #lid.iter_mask();));
         out.push(parse_quote_spanned!(sp=> {
             let mut #lid = EnterLoopN::<N>::enter_loop_n(__exec);
             for #pat in #iter {
@@ -504,7 +527,10 @@ impl Rewriter {
 
     fn emit_loop(&mut self, l: ExprLoop, out: &mut Vec<Stmt>) {
         if !l.attrs.is_empty() {
-            self.err(&l.attrs[0], "attributes on kernel statements are not supported");
+            self.err(
+                &l.attrs[0],
+                "attributes on kernel statements are not supported",
+            );
         }
         if let Some(lbl) = &l.label {
             self.err(lbl, "labeled loops are not supported in #[kernel] (masks target the innermost loop only)");
@@ -532,8 +558,9 @@ impl Rewriter {
         let body_stmts = self.rewrite_block(l.body).stmts;
         self.loops.pop();
 
-        let iter_decl: Option<Stmt> =
-            iid.as_ref().map(|iid| parse_quote_spanned!(sp=> let mut #iid = #lid.iter_mask();));
+        let iter_decl: Option<Stmt> = iid
+            .as_ref()
+            .map(|iid| parse_quote_spanned!(sp=> let mut #iid = #lid.iter_mask();));
         out.push(parse_quote_spanned!(sp=> {
             let mut #lid = EnterLoopN::<N>::enter_loop_n(__exec);
             loop {
@@ -610,7 +637,8 @@ impl Rewriter {
             return;
         };
         let Some(iid) = frame.iter_id.clone() else {
-            self.errors.push(Error::new(sp, "internal: continue without iteration mask"));
+            self.errors
+                .push(Error::new(sp, "internal: continue without iteration mask"));
             return;
         };
         match frame.cont_label.clone() {
@@ -655,7 +683,8 @@ impl Rewriter {
                 ));
             }
             (RetMode::Value(_), None) => {
-                self.errors.push(Error::new(sp, "this kernel must return a value"));
+                self.errors
+                    .push(Error::new(sp, "this kernel must return a value"));
                 return;
             }
             (RetMode::Unit, None) => {
@@ -970,7 +999,10 @@ impl Rewriter {
                 Expr::Array(a)
             }
             Expr::Assign(a) => {
-                self.err(&a, "assignment is only supported as a statement in #[kernel]");
+                self.err(
+                    &a,
+                    "assignment is only supported as a statement in #[kernel]",
+                );
                 Expr::Assign(a)
             }
             Expr::Async(x) => {
@@ -1154,8 +1186,10 @@ impl Rewriter {
                 if v.is_empty() {
                     Expr::Verbatim(v)
                 } else {
-                    self.errors
-                        .push(Error::new_spanned(&v, "unsupported expression in #[kernel]"));
+                    self.errors.push(Error::new_spanned(
+                        &v,
+                        "unsupported expression in #[kernel]",
+                    ));
                     Expr::Verbatim(v)
                 }
             }
@@ -1240,7 +1274,10 @@ impl Rewriter {
                     let seg = &p.path.segments[0];
                     let name = seg.ident.to_string();
                     if name.starts_with("__") {
-                        self.err(&p, "identifiers starting with `__` are reserved by #[kernel] machinery");
+                        self.err(
+                            &p,
+                            "identifiers starting with `__` are reserved by #[kernel] machinery",
+                        );
                     }
                     name.chars()
                         .next()

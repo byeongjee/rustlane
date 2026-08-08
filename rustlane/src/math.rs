@@ -44,7 +44,6 @@ use core::simd::num::{SimdFloat, SimdInt, SimdUint};
 use core::simd::{LaneCount, Simd, SimdElement, SupportedLaneCount};
 use std::simd::StdFloat;
 
-
 /// Lane-wise square root (`fsqrt`).
 #[inline(always)]
 pub fn sqrt<T, const N: usize>(x: Varying<T, N>) -> Varying<T, N>
@@ -170,7 +169,11 @@ where
 /// Lane-wise linear interpolation `a + t*(b - a)`, fused as a single
 /// `mul_add` for one rounding.
 #[inline(always)]
-pub fn lerp<T, const N: usize>(a: Varying<T, N>, b: Varying<T, N>, t: Varying<T, N>) -> Varying<T, N>
+pub fn lerp<T, const N: usize>(
+    a: Varying<T, N>,
+    b: Varying<T, N>,
+    t: Varying<T, N>,
+) -> Varying<T, N>
 where
     T: SimdElement,
     LaneCount<N>: SupportedLaneCount,
@@ -198,7 +201,6 @@ where
 {
     Varying(a.0.mul_add(b.0, c.0))
 }
-
 
 /// Reciprocal square root `1/sqrt(x)`, f32.
 ///
@@ -305,7 +307,6 @@ where
     Simd::splat(1.0) / x
 }
 
-
 /// `e^x`, ported from ISPC `exp` (`__math_lib_ispc`).
 #[inline(always)]
 pub fn exp<const N: usize>(x: Varying<f32, N>) -> Varying<f32, N>
@@ -355,7 +356,6 @@ where
     Varying(sincos_simd(x.0, true))
 }
 
-
 #[inline(always)]
 fn exp_simd<const N: usize>(x_full: Simd<f32, N>) -> Simd<f32, N>
 where
@@ -397,7 +397,6 @@ where
     underflow.select(Simd::splat(0.0), result)
 }
 
-
 #[inline(always)]
 fn range_reduce_log<const N: usize>(input: Simd<f32, N>) -> (Simd<f32, N>, Simd<i32, N>)
 where
@@ -410,8 +409,7 @@ where
     let biased_exponent = (int_version >> Simd::splat(23)).cast::<i32>();
     let offset_exponent = biased_exponent + Simd::splat(1);
     let exponent = offset_exponent - Simd::splat(127);
-    let blended =
-        (int_version & Simd::splat(NONEXPONENT_MASK)) | Simd::splat(EXPONENT_NEG1);
+    let blended = (int_version & Simd::splat(NONEXPONENT_MASK)) | Simd::splat(EXPONENT_NEG1);
     let reduced = Simd::<f32, N>::from_bits(blended);
     (reduced, exponent)
 }
@@ -444,10 +442,7 @@ where
 
     let (reduced, exponent) = range_reduce_log(x_full);
     let reduced = close_to_one.select(x_full, reduced);
-    let scale = close_to_one.select(
-        Simd::splat(0.0),
-        exponent.cast::<f32>() * Simd::splat(LN2),
-    );
+    let scale = close_to_one.select(Simd::splat(0.0), exponent.cast::<f32>() * Simd::splat(LN2));
 
     let x = reduced - Simd::splat(1.0);
     let x2 = x.mul_add(x, Simd::splat(1e-30));
@@ -459,7 +454,6 @@ where
     result = x2.mul_add(result, x.mul_add(Simd::splat(C02), Simd::splat(1.0)));
     x.mul_add(result, scale)
 }
-
 
 #[inline(always)]
 fn sincos_simd<const N: usize>(x_full: Simd<f32, N>, want_cos: bool) -> Simd<f32, N>
@@ -516,7 +510,6 @@ where
     flip_sign.select(-formula, formula)
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -527,7 +520,6 @@ mod tests {
     fn approx(a: f32, b: f32, eps: f32) -> bool {
         (a - b).abs() <= eps
     }
-
 
     #[test]
     fn thin_wrappers_f32() {
@@ -540,13 +532,28 @@ mod tests {
 
         let a = Vf::from_array([1.0, 5.0, 3.0, 8.0, 2.0, 6.0, 4.0, 7.0]);
         let b = Vf::splat(4.0);
-        assert_eq!(min(a, b).to_array(), [1.0, 4.0, 3.0, 4.0, 2.0, 4.0, 4.0, 4.0]);
-        assert_eq!(max(a, b).to_array(), [4.0, 5.0, 4.0, 8.0, 4.0, 6.0, 4.0, 7.0]);
+        assert_eq!(
+            min(a, b).to_array(),
+            [1.0, 4.0, 3.0, 4.0, 2.0, 4.0, 4.0, 4.0]
+        );
+        assert_eq!(
+            max(a, b).to_array(),
+            [4.0, 5.0, 4.0, 8.0, 4.0, 6.0, 4.0, 7.0]
+        );
 
         let f = Vf::from_array([1.2, -1.2, 2.7, -2.7, 3.5, -3.5, 0.9, -0.4]);
-        assert_eq!(floor(f).to_array(), [1.0, -2.0, 2.0, -3.0, 3.0, -4.0, 0.0, -1.0]);
-        assert_eq!(ceil(f).to_array(), [2.0, -1.0, 3.0, -2.0, 4.0, -3.0, 1.0, -0.0]);
-        assert_eq!(round(f).to_array(), [1.0, -1.0, 3.0, -3.0, 4.0, -4.0, 1.0, -0.0]);
+        assert_eq!(
+            floor(f).to_array(),
+            [1.0, -2.0, 2.0, -3.0, 3.0, -4.0, 0.0, -1.0]
+        );
+        assert_eq!(
+            ceil(f).to_array(),
+            [2.0, -1.0, 3.0, -2.0, 4.0, -3.0, 1.0, -0.0]
+        );
+        assert_eq!(
+            round(f).to_array(),
+            [1.0, -1.0, 3.0, -3.0, 4.0, -4.0, 1.0, -0.0]
+        );
 
         let c = clamp(a, Vf::splat(3.0), Vf::splat(6.0));
         assert_eq!(c.to_array(), [3.0, 5.0, 3.0, 6.0, 3.0, 6.0, 4.0, 6.0]);
@@ -574,26 +581,31 @@ mod tests {
         let c = clamp(v, Vi::splat(0), Vi::splat(63));
         assert_eq!(c.to_array(), [0, 0, 5, 63, 63, 63, 0, 7]);
         assert_eq!(min(v, Vi::splat(5)).to_array(), [-3, 0, 5, 5, 5, 5, -1, 5]);
-        assert_eq!(max(v, Vi::splat(5)).to_array(), [5, 5, 5, 63, 64, 100, 5, 7]);
+        assert_eq!(
+            max(v, Vi::splat(5)).to_array(),
+            [5, 5, 5, 63, 64, 100, 5, 7]
+        );
         type Vu = Varying<u32, N>;
         let u = Vu::from_array([0, 1, 2, 3, 4, 5, 6, 7]);
-        assert_eq!(clamp(u, Vu::splat(2), Vu::splat(5)).to_array(), [2, 2, 2, 3, 4, 5, 5, 5]);
+        assert_eq!(
+            clamp(u, Vu::splat(2), Vu::splat(5)).to_array(),
+            [2, 2, 2, 3, 4, 5, 5, 5]
+        );
     }
 
     #[test]
     fn thin_wrappers_f64_trivial() {
         let v = Varying::<f64, N>::from_array([1.0, 4.0, 9.0, 16.0, 25.0, 36.0, 49.0, 64.0]);
-        assert_eq!(
-            sqrt(v).to_array(),
-            [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]
-        );
+        assert_eq!(sqrt(v).to_array(), [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]);
         let a = Varying::<f64, N>::splat(-2.5);
         assert_eq!(abs(a).to_array(), [2.5; N]);
         let lo = Varying::<f64, N>::splat(0.0);
         let hi = Varying::<f64, N>::splat(3.0);
-        assert_eq!(clamp(v, lo, hi).to_array(), [1.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0]);
+        assert_eq!(
+            clamp(v, lo, hi).to_array(),
+            [1.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0]
+        );
     }
-
 
     #[test]
     fn rsqrt_is_within_a_few_ulp() {
@@ -629,7 +641,6 @@ mod tests {
         let g = rsqrt(v).to_array();
         assert!(approx(g[0], 0.5, 1e-3) && approx(g[1], 1.0 / 3.0, 1e-3));
     }
-
 
     fn max_rel_err(
         xs: &[f32],

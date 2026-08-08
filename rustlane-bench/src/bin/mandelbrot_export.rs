@@ -117,6 +117,9 @@ fn main() {
         LANES, best_ref, sum_ref
     );
     assert_eq!(sum_exp, 27304085, "exported checksum mismatch");
-    assert_eq!(sum_exp, sum_ref, "exported vs non-exported checksum mismatch");
+    assert_eq!(
+        sum_exp, sum_ref,
+        "exported vs non-exported checksum mismatch"
+    );
     println!("mandelbrot_export: OK (checksum 27304085, exported == non-exported)");
 }

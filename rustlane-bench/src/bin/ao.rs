@@ -18,7 +18,6 @@ struct Isect {
     hit: i32,
 }
 
-
 #[kernel]
 fn sphere_isect(
     isect: VaryingIsect<N>,
@@ -90,7 +89,6 @@ fn plane_isect(
     }
     out
 }
-
 
 #[kernel]
 fn ambient_occlusion(
@@ -234,8 +232,10 @@ fn ao_render(w: i32, h: i32, ns: i32, image: &mut [f32]) {
     }
 }
 
-
-const REF_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../ispc-ref/ref-out/ao_ispc.bin");
+const REF_PATH: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../ispc-ref/ref-out/ao_ispc.bin"
+);
 const REF_CHECKSUM: f64 = 365161.535156;
 
 fn load_ref(n: usize) -> Option<Vec<f32>> {

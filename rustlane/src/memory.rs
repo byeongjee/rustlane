@@ -463,12 +463,7 @@ where
                 // SAFETY: the scalar check above proves every lane of `idxs`
                 // in bounds for `self`.
                 return Varying(unsafe {
-                    Simd::gather_select_unchecked(
-                        self,
-                        Mask::splat(true),
-                        idxs,
-                        Simd::default(),
-                    )
+                    Simd::gather_select_unchecked(self, Mask::splat(true), idxs, Simd::default())
                 });
             }
         } else {
@@ -487,7 +482,12 @@ where
                 });
             }
         }
-        Varying(Simd::gather_select(self, active.cast::<isize>(), idxs, Simd::default()))
+        Varying(Simd::gather_select(
+            self,
+            active.cast::<isize>(),
+            idxs,
+            Simd::default(),
+        ))
     }
     #[inline(always)]
     unsafe fn spmd_read_unchecked(&self, idx: Varying<i32, N>, exec: E) -> Varying<T, N> {
@@ -520,7 +520,9 @@ where
                 // SAFETY: the scalar check above proves every lane of `idxs`
                 // in bounds for `self`.
                 unsafe {
-                    value.0.scatter_select_unchecked(self, Mask::splat(true), idxs);
+                    value
+                        .0
+                        .scatter_select_unchecked(self, Mask::splat(true), idxs);
                 }
                 return;
             }
@@ -531,9 +533,11 @@ where
                 // (remapped to 0) are disabled by `active`, so they still
                 // never touch memory.
                 unsafe {
-                    value
-                        .0
-                        .scatter_select_unchecked(self, active.cast::<isize>(), sel.cast::<usize>());
+                    value.0.scatter_select_unchecked(
+                        self,
+                        active.cast::<isize>(),
+                        sel.cast::<usize>(),
+                    );
                 }
                 return;
             }
@@ -547,7 +551,9 @@ where
         // SAFETY: caller guarantees active lanes in bounds; inactive lanes are
         // disabled by `active`.
         unsafe {
-            value.0.scatter_select_unchecked(self, active.cast::<isize>(), idxs);
+            value
+                .0
+                .scatter_select_unchecked(self, active.cast::<isize>(), idxs);
         }
     }
 }
@@ -707,7 +713,11 @@ mod tests {
         assert_eq!(r.to_array(), [2, 3, 4, 5]);
 
         let mut out = vec![0i32; 8];
-        out[..].spmd_write(LinearIndex::<N>::new(4), AllOn, Varying::from_array([7, 8, 9, 10]));
+        out[..].spmd_write(
+            LinearIndex::<N>::new(4),
+            AllOn,
+            Varying::from_array([7, 8, 9, 10]),
+        );
         assert_eq!(out, [0, 0, 0, 0, 7, 8, 9, 10]);
 
         let r = unsafe { a[..].spmd_read_unchecked(LinearIndex::<N>::new(1), AllOn) };
@@ -722,10 +732,17 @@ mod tests {
         assert_eq!(r.to_array(), [14, 15, 0, 0]);
 
         let mut out = vec![0i32; 6];
-        out[..].spmd_write(LinearIndex::<N>::new(4), tail_mask, Varying::from_array([1, 2, 3, 4]));
+        out[..].spmd_write(
+            LinearIndex::<N>::new(4),
+            tail_mask,
+            Varying::from_array([1, 2, 3, 4]),
+        );
         assert_eq!(out, [0, 0, 0, 0, 1, 2]);
 
-        let r = a[..].spmd_read(LinearIndex::<N>::new(4), VMaskGuard::<N>(mask([true, true, false, false]), true));
+        let r = a[..].spmd_read(
+            LinearIndex::<N>::new(4),
+            VMaskGuard::<N>(mask([true, true, false, false]), true),
+        );
         assert_eq!(r.to_array(), [14, 15, 0, 0]);
     }
 
@@ -789,20 +806,46 @@ mod tests {
             charge: i32,
         }
         let ps = [
-            Particle { id: 0, mass: 1.0, charge: -1 },
-            Particle { id: 1, mass: 2.0, charge: 0 },
-            Particle { id: 2, mass: 3.0, charge: 1 },
-            Particle { id: 3, mass: 4.0, charge: 2 },
+            Particle {
+                id: 0,
+                mass: 1.0,
+                charge: -1,
+            },
+            Particle {
+                id: 1,
+                mass: 2.0,
+                charge: 0,
+            },
+            Particle {
+                id: 2,
+                mass: 3.0,
+                charge: 1,
+            },
+            Particle {
+                id: 3,
+                mass: 4.0,
+                charge: 2,
+            },
         ];
         let idx = Vi::from_array([0, 2, 1, 3]);
 
         let ids = unsafe {
-            gather_field::<Particle, i32, N, _>(&ps, idx, core::mem::offset_of!(Particle, id), AllOn)
+            gather_field::<Particle, i32, N, _>(
+                &ps,
+                idx,
+                core::mem::offset_of!(Particle, id),
+                AllOn,
+            )
         };
         assert_eq!(ids.to_array(), [0, 2, 1, 3]);
 
         let mass = unsafe {
-            gather_field::<Particle, f32, N, _>(&ps, idx, core::mem::offset_of!(Particle, mass), AllOn)
+            gather_field::<Particle, f32, N, _>(
+                &ps,
+                idx,
+                core::mem::offset_of!(Particle, mass),
+                AllOn,
+            )
         };
         assert_eq!(mass.to_array(), [1.0, 3.0, 2.0, 4.0]);
 
