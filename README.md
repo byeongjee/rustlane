@@ -58,12 +58,14 @@ Nightly only. Select the nightly toolchain and add rustlane to your dependencies
 ```toml
 # rust-toolchain.toml
 [toolchain]
-channel = "nightly"
+channel = "nightly-2026-08-07"
 
 # Cargo.toml
 [dependencies]
 rustlane = "0.1.0"
 ```
+
+The repository pins this known-good nightly for reproducible builds.
 
 A `#[kernel]` is the per-lane program; an `#[export]` is the all-uniform entry
 point that drives it with `foreach!` and is callable as an ordinary safe Rust
