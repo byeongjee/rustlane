@@ -7,6 +7,7 @@ description = "Proc macros for rustlane: the #[kernel]/#[export] attributes and 
 keywords = ["simd", "spmd", "ispc", "parallel", "vectorization"]
 categories = ["hardware-support", "concurrency"]
 repository = "https://github.com/byeongjee/rustlane"
+readme = "README.md"
 
 [lib]
 proc-macro = true
