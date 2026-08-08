@@ -10,4 +10,4 @@ repository = "https://github.com/byeongjee/rustlane"
 readme = "../README.md"
 
 [dependencies]
-rustlane-macros = { version = "0.1.0", path = "../rustlane-macros" }
+rustlane-macros = { version = "=0.1.0", path = "../rustlane-macros" }
