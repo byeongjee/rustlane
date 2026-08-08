@@ -102,9 +102,9 @@ measured against Intel ISPC on two machines. `#[export]` dispatches to the
 widest target the CPU supports — 8 lanes on the M2 Pro, 16 on the Zen4 box —
 and the ISPC target at that same width is the orange bar.
 
-![aarch64 benchmark](docs/bench-aarch64.png)
+![aarch64 benchmark](https://raw.githubusercontent.com/byeongjee/rustlane/main/docs/bench-aarch64.png)
 
-![x86-64 benchmark](docs/bench-x86_64.png)
+![x86-64 benchmark](https://raw.githubusercontent.com/byeongjee/rustlane/main/docs/bench-x86_64.png)
 
 Geometric mean of rustlane / ISPC runtime at matched width:
 
