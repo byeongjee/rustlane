@@ -2,7 +2,7 @@
 name = "rustlane-macros"
 version = "0.1.0"
 edition = "2021"
-license = "MIT OR Apache-2.0"
+license = "MIT"
 description = "Proc macros for rustlane: the #[kernel]/#[export] attributes and foreach! that lower ISPC-style SPMD control flow to masked SIMD"
 keywords = ["simd", "spmd", "ispc", "parallel", "vectorization"]
 categories = ["hardware-support", "concurrency"]

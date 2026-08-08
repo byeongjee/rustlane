@@ -1,11 +1,11 @@
 # Third-Party Notices
 
-This project is licensed as `MIT OR Apache-2.0` (Copyright (c) 2026 Byeongjee
-Kang; see `LICENSE-MIT` and `LICENSE-APACHE`). The portions listed below are
-bundled from, or derived from, third-party sources and **carry their own
-upstream terms**, which continue to apply to that material. The per-file
-copyright notices in the source files are authoritative; this document collects
-them in one place and reproduces the license texts they require.
+This project's original code is licensed under the MIT License (Copyright (c)
+2026 Byeongjee Kang; see `LICENSE`). The portions listed below are bundled
+from, or derived from, third-party sources and **carry their own upstream
+terms**, which continue to apply to that material. The per-file copyright
+notices in the source files are authoritative; this document collects them in
+one place and reproduces the license texts they require.
 
 ## Intel ISPC — BSD-3-Clause
 
