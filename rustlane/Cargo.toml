@@ -10,5 +10,5 @@ repository = "https://github.com/byeongjee/rustlane"
 readme = "../README.md"
 
 [dependencies]
-rustlane-core = { path = "../rustlane-core" }
-rustlane-macros = { path = "../rustlane-macros" }
+rustlane-core = { version = "0.1.0", path = "../rustlane-core" }
+rustlane-macros = { version = "0.1.0", path = "../rustlane-macros" }
