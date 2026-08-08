@@ -120,8 +120,8 @@ coefficients. Each file carries a header note pointing here.
 
 | File | Ported from |
 | --- | --- |
-| `rustlane-core/src/math.rs` | ISPC `stdlib/stdlib.ispc` default-precision polynomials for `exp`, `log`, `sin`, `cos`, `pow`. The thin hardware wrappers (`sqrt`/`abs`/`min`/`max`/`floor`/`ceil`/`round`/`clamp`/`lerp`) and the NEON reciprocal/rsqrt estimates are original. See the syrah note below. |
-| `rustlane-core/src/rng.rs` | ISPC `stdlib/stdlib.ispc` `random`/`frandom`/`seed_rng` and `struct RNGState` from `stdlib/include/core.isph` (LFSR113 / combined-Tausworthe) |
+| `rustlane/src/math.rs` | ISPC `stdlib/stdlib.ispc` default-precision polynomials for `exp`, `log`, `sin`, `cos`, `pow`. The thin hardware wrappers (`sqrt`/`abs`/`min`/`max`/`floor`/`ceil`/`round`/`clamp`/`lerp`) and the NEON reciprocal/rsqrt estimates are original. See the syrah note below. |
+| `rustlane/src/rng.rs` | ISPC `stdlib/stdlib.ispc` `random`/`frandom`/`seed_rng` and `struct RNGState` from `stdlib/include/core.isph` (LFSR113 / combined-Tausworthe) |
 | `rustlane-bench/src/bin/ao.rs` | `ispc-ref/ao.ispc` (aobench) |
 | `rustlane-bench/src/bin/mandelbrot.rs` | `ispc-ref/mandelbrot.ispc` |
 | `rustlane-bench/src/bin/mandelbrot_export.rs` | Same `mandel` kernel as `mandelbrot.rs` (from `ispc-ref/mandelbrot.ispc`), driven through the `#[export]` entry point |
@@ -196,7 +196,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - Upstream: <https://github.com/boulos/syrah>
 
 The transcendental polynomial coefficients that ISPC's standard library uses
-(and therefore the ports in `rustlane-core/src/math.rs`) originate from syrah, as
+(and therefore the ports in `rustlane/src/math.rs`) originate from syrah, as
 credited in ISPC's `stdlib.ispc` (`// Solomon Boulos's "syrah"`). These
 coefficients entered this project through ISPC's BSD-3-Clause standard library,
 not directly from syrah; the credit is retained as a courtesy and for accuracy.
