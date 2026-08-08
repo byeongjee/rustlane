@@ -6,6 +6,15 @@ error[E0277]: cannot assign to a value of type `i32` under execution context `VM
   |
   = help: the trait `rustlane::MaskedAssign<VMask<N>, _>` is not implemented for `i32`
   = note: assigning to a uniform (scalar) variable under VARYING control flow is not supported: every lane would race on one location. Make the variable a `Varying`, hoist the assignment out of the varying branch, or wrap it in `unmasked!` if all-lanes semantics are intended
-  = help: the following other types implement trait `rustlane::MaskedAssign<E, V>`:
-            `i32` implements `rustlane::MaskedAssign<AllOn>`
-            `i32` implements `rustlane::MaskedAssign<BoolGuard>`
+help: `i32` implements trait `rustlane::MaskedAssign<E, V>`
+ --> $WORKSPACE/rustlane/src/exec.rs
+  |
+  |         impl MaskedAssign<AllOn> for $t {
+  |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `rustlane::MaskedAssign<AllOn>`
+...
+  |         impl MaskedAssign<BoolGuard> for $t {
+  |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `rustlane::MaskedAssign<BoolGuard>`
+...
+  | impl_scalar_masked_assign!(f32, f64, i8, i16, i32, i64, isize, u8, u16, u32, u64, usize, bool);
+  | ---------------------------------------------------------------------------------------------- in this macro invocation
+  = note: this error originates in the macro `impl_scalar_masked_assign` (in Nightly builds, run with -Z macro-backtrace for more info)

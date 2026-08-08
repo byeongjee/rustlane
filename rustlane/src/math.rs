@@ -191,9 +191,8 @@ pub fn fma<const N: usize>(
 /// (`y_{n+1} = y_n * (3 - x*y_n^2)/2`). ULP behaviour: NOT correctly rounded;
 /// after two steps the relative error is a few ULP (empirically ≤ ~2 ULP over
 /// the normal-float range — see the `rsqrt_is_within_a_few_ulp` test). Lanes
-/// beyond the last full 4-wide NEON group (only reachable for `N` not a
-/// multiple of 4, i.e. `N < 4`) use the exact `1/sqrt` fallback. Off aarch64
-/// the whole function is the exact `1/sqrt(x)`.
+/// beyond the last full 4-wide NEON group use the exact `1/sqrt` fallback. Off
+/// aarch64 the whole function is the exact `1/sqrt(x)`.
 #[inline(always)]
 pub fn rsqrt<const N: usize>(x: Varying<f32, N>) -> Varying<f32, N> {
     Varying(rsqrt_simd(x.0))
@@ -573,10 +572,12 @@ mod tests {
     }
 
     #[test]
-    fn rsqrt_odd_widths_use_fallback() {
-        let v = Varying::<f32, 2>::from_array([4.0, 9.0]);
+    fn rsqrt_non_multiple_width_uses_fallback() {
+        let v = Varying::<f32, 3>::from_array([4.0, 9.0, 16.0]);
         let g = rsqrt(v).to_array();
-        assert!(approx(g[0], 0.5, 1e-3) && approx(g[1], 1.0 / 3.0, 1e-3));
+        assert!(
+            approx(g[0], 0.5, 1e-3) && approx(g[1], 1.0 / 3.0, 1e-3) && approx(g[2], 0.25, 1e-3)
+        );
     }
 
     fn max_rel_err(

@@ -1,5 +1,3 @@
-#![feature(portable_simd)]
-
 use rustlane::prelude::*;
 use rustlane::{export, kernel};
 use std::time::Instant;

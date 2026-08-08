@@ -281,7 +281,7 @@ fn main() {
     );
 
     let mut ok = true;
-    let mut detail = String::new();
+    let detail;
     match load_ref(n) {
         Some(refimg) => {
             let ref_sum: f64 = refimg.iter().map(|&v| v as f64).sum();

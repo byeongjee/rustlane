@@ -1,5 +1,3 @@
-#![feature(portable_simd)]
-
 use rustlane::kernel;
 use rustlane::prelude::*;
 

@@ -1,5 +1,3 @@
-#![feature(portable_simd)]
-
 use rustlane::export;
 use rustlane::prelude::*;
 

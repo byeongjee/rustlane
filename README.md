@@ -21,7 +21,6 @@ diverges between lanes is handled for you. Here is the Mandelbrot escape-time
 kernel — plain `for` / `if` / `break` over *varying* values:
 
 ```rust
-#![feature(portable_simd)]
 use rustlane::prelude::*;
 use rustlane::kernel;
 
@@ -71,7 +70,6 @@ point that drives it with `foreach!` and is callable as an ordinary safe Rust
 function:
 
 ```rust
-#![feature(portable_simd)]
 use rustlane::prelude::*;
 use rustlane::{export, kernel};
 
@@ -145,8 +143,9 @@ python3 rustlane-bench/make_charts.py aarch64          # or x86_64
 - `reduce` — horizontal reductions and cross-lane ops (broadcast / rotate / shift / scan / pack)
 - Runtime target dispatch: SSE2 / SSE4.1 / AVX2 / AVX-512 on x86-64, NEON on aarch64
 
-Nightly is required and will stay required: `Varying<T, N>` is built on
-`#![feature(portable_simd)]`, which is unstable upstream.
+Nightly is required and will stay required because `Varying<T, N>` is built on
+the unstable portable SIMD API. Applications only need
+`#![feature(portable_simd)]` when they use `std::simd` directly.
 
 ## Not planned
 
