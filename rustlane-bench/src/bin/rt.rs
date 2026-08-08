@@ -21,17 +21,14 @@ struct Triangle {
 mod scene {
     use super::{BvhNode, Triangle};
     use rustlane::prelude::*;
-    use std::simd::{LaneCount, Mask, StdFloat, SupportedLaneCount};
+    use std::simd::{Mask, StdFloat};
 
     #[inline(always)]
     fn vfma<const N: usize>(
         a: Varying<f32, N>,
         b: Varying<f32, N>,
         c: Varying<f32, N>,
-    ) -> Varying<f32, N>
-    where
-        LaneCount<N>: SupportedLaneCount,
-    {
+    ) -> Varying<f32, N> {
         Varying(a.0.mul_add(b.0, c.0))
     }
 
@@ -43,10 +40,7 @@ mod scene {
         bx: Varying<f32, N>,
         by: Varying<f32, N>,
         bz: Varying<f32, N>,
-    ) -> (Varying<f32, N>, Varying<f32, N>, Varying<f32, N>)
-    where
-        LaneCount<N>: SupportedLaneCount,
-    {
+    ) -> (Varying<f32, N>, Varying<f32, N>, Varying<f32, N>) {
         (
             vfma(ay, bz, -(az * by)),
             vfma(az, bx, -(ax * bz)),
@@ -62,38 +56,26 @@ mod scene {
         bx: Varying<f32, N>,
         by: Varying<f32, N>,
         bz: Varying<f32, N>,
-    ) -> Varying<f32, N>
-    where
-        LaneCount<N>: SupportedLaneCount,
-    {
+    ) -> Varying<f32, N> {
         vfma(az, bz, vfma(ax, bx, ay * by))
     }
 
     #[derive(Clone, Copy)]
-    pub struct V3<const N: usize>
-    where
-        LaneCount<N>: SupportedLaneCount,
-    {
+    pub struct V3<const N: usize> {
         pub x: Varying<f32, N>,
         pub y: Varying<f32, N>,
         pub z: Varying<f32, N>,
     }
 
     #[derive(Clone, Copy)]
-    pub struct Ray<const N: usize>
-    where
-        LaneCount<N>: SupportedLaneCount,
-    {
+    pub struct Ray<const N: usize> {
         pub origin: V3<N>,
         pub dir: V3<N>,
         pub inv_dir: V3<N>,
         pub dir_is_neg: [bool; 3],
     }
 
-    pub struct HitResult<const N: usize>
-    where
-        LaneCount<N>: SupportedLaneCount,
-    {
+    pub struct HitResult<const N: usize> {
         pub maxt: Varying<f32, N>,
         pub id: Varying<i32, N>,
     }
@@ -106,10 +88,7 @@ mod scene {
         py: Varying<i32, N>,
         ws: f32,
         hs: f32,
-    ) -> Ray<N>
-    where
-        LaneCount<N>: SupportedLaneCount,
-    {
+    ) -> Ray<N> {
         let x = px.cast::<f32>() * ws;
         let y = py.cast::<f32>() * hs;
 
@@ -178,10 +157,7 @@ mod scene {
         ray: &Ray<N>,
         mint: f32,
         maxt: Varying<f32, N>,
-    ) -> Mask<i32, N>
-    where
-        LaneCount<N>: SupportedLaneCount,
-    {
+    ) -> Mask<i32, N> {
         let o = &ray.origin;
         let inv = &ray.inv_dir;
 
@@ -209,10 +185,7 @@ mod scene {
         ray: &Ray<N>,
         mint: f32,
         maxt: Varying<f32, N>,
-    ) -> (Mask<i32, N>, Varying<f32, N>)
-    where
-        LaneCount<N>: SupportedLaneCount,
-    {
+    ) -> (Mask<i32, N>, Varying<f32, N>) {
         let p0x = Varying::splat(tri.p[0][0]);
         let p0y = Varying::splat(tri.p[0][1]);
         let p0z = Varying::splat(tri.p[0][2]);
@@ -257,10 +230,7 @@ mod scene {
         nodes: &[BvhNode],
         tris: &[Triangle],
         ray: &Ray<N>,
-    ) -> HitResult<N>
-    where
-        LaneCount<N>: SupportedLaneCount,
-    {
+    ) -> HitResult<N> {
         let mint = 0.0f32;
         let mut maxt = Varying::splat(1e30f32);
         let mut hit_id = Varying::splat(0i32);
@@ -317,10 +287,7 @@ mod scene {
         hs: f32,
         nodes: &[BvhNode],
         tris: &[Triangle],
-    ) -> HitResult<N>
-    where
-        LaneCount<N>: SupportedLaneCount,
-    {
+    ) -> HitResult<N> {
         let ray = generate_ray(r2c, c2w, px, py, ws, hs);
         bvh_intersect(nodes, tris, &ray)
     }

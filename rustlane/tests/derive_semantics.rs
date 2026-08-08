@@ -97,20 +97,14 @@ fn ref_choose_dot(sel: f32, a: Vec3, b: Vec3, c: Vec3) -> f32 {
     ref_dot(p, p)
 }
 
-fn v3_lanes<const N: usize>(f: impl Fn(usize) -> Vec3) -> VaryingVec3<N>
-where
-    core::simd::LaneCount<N>: core::simd::SupportedLaneCount,
-{
+fn v3_lanes<const N: usize>(f: impl Fn(usize) -> Vec3) -> VaryingVec3<N> {
     VaryingVec3 {
         x: Varying::from_array(core::array::from_fn(|l| f(l).x)),
         y: Varying::from_array(core::array::from_fn(|l| f(l).y)),
         z: Varying::from_array(core::array::from_fn(|l| f(l).z)),
     }
 }
-fn v3_lane<const N: usize>(v: VaryingVec3<N>, l: usize) -> Vec3
-where
-    core::simd::LaneCount<N>: core::simd::SupportedLaneCount,
-{
+fn v3_lane<const N: usize>(v: VaryingVec3<N>, l: usize) -> Vec3 {
     Vec3 {
         x: v.x.to_array()[l],
         y: v.y.to_array()[l],

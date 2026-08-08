@@ -25,7 +25,7 @@ use proc_macro::TokenStream;
 /// fn f(x: Varying<f32>, n: i32) -> Varying<f32> { .. }
 /// // becomes
 /// fn f<const N: usize, __E>(__exec: __E, x: Varying<f32, N>, n: i32) -> Varying<f32, N>
-/// where __E: rustlane::Exec + rustlane::ActiveMask<N>, LaneCount<N>: SupportedLaneCount { .. }
+/// where __E: rustlane::Exec + rustlane::ActiveMask<N> { .. }
 /// ```
 #[proc_macro_attribute]
 pub fn kernel(attr: TokenStream, item: TokenStream) -> TokenStream {
