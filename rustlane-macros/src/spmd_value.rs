@@ -145,25 +145,17 @@ fn emit(name: &Ident, vis: &Visibility, fields: &[FieldInfo]) -> TokenStream {
     let varying_struct = quote! {
         #[derive(::core::clone::Clone, ::core::marker::Copy)]
         #[allow(non_camel_case_types)]
-        #vis struct #vname<const N: usize>
-        where
-            ::core::simd::LaneCount<N>: ::core::simd::SupportedLaneCount,
-        {
+        #vis struct #vname<const N: usize> {
             #(#struct_fields,)*
         }
     };
 
     let impl_spmd_value = quote! {
         impl ::rustlane::SpmdValue for #name {
-            type Varying<const N: usize> = #vname<N>
-            where
-                ::core::simd::LaneCount<N>: ::core::simd::SupportedLaneCount;
+            type Varying<const N: usize> = #vname<N>;
 
             #[inline(always)]
-            fn splat<const N: usize>(self) -> #vname<N>
-            where
-                ::core::simd::LaneCount<N>: ::core::simd::SupportedLaneCount,
-            {
+            fn splat<const N: usize>(self) -> #vname<N> {
                 #vname { #(#splat_fields,)* }
             }
         }
@@ -185,10 +177,7 @@ fn emit(name: &Ident, vis: &Visibility, fields: &[FieldInfo]) -> TokenStream {
     let masked_assign_impl = |ctx: TokenStream| {
         let stmts = &assign_stmts;
         quote! {
-            impl<const N: usize> ::rustlane::MaskedAssign<#ctx> for #vname<N>
-            where
-                ::core::simd::LaneCount<N>: ::core::simd::SupportedLaneCount,
-            {
+            impl<const N: usize> ::rustlane::MaskedAssign<#ctx> for #vname<N> {
                 #[inline(always)]
                 fn masked_assign(&mut self, __exec: #ctx, value: Self) {
                     #(#stmts)*
@@ -234,16 +223,12 @@ fn emit(name: &Ident, vis: &Visibility, fields: &[FieldInfo]) -> TokenStream {
                 ) -> #vname<N>
                 where
                     __E: ::rustlane::ActiveMask<N> + ::core::marker::Copy,
-                    ::core::simd::LaneCount<N>: ::core::simd::SupportedLaneCount,
                 {
                     #vname { #(#gather_fields,)* }
                 }
             }
 
-            impl<const N: usize> #vname<N>
-            where
-                ::core::simd::LaneCount<N>: ::core::simd::SupportedLaneCount,
-            {
+            impl<const N: usize> #vname<N> {
                 /// AoS gather: read one `#name` per lane out of `base` at the
                 /// `Varying<i32, N>` element indices (one strided gather per
                 /// leaf field; inactive/out-of-bounds lanes never addressed).

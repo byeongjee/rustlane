@@ -161,8 +161,6 @@ pub(crate) fn transform_sig(sig: &mut Signature, errors: &mut Vec<Error>, allow_
     let wc = sig.generics.make_where_clause();
     wc.predicates
         .push(parse_quote!(__E: ::rustlane::Exec + ::rustlane::ActiveMask<N>));
-    wc.predicates
-        .push(parse_quote!(::core::simd::LaneCount<N>: ::core::simd::SupportedLaneCount));
 
     let mut has_receiver = false;
     for arg in sig.inputs.iter_mut() {
