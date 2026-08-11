@@ -1240,17 +1240,11 @@ impl Rewriter {
                 parse_quote_spanned!(sp=> #recv.#m(#r))
             }
             None => match &b.op {
-                BinOp::And(_) => {
+                BinOp::And(_) | BinOp::Or(_) => {
+                    let is_and = matches!(b.op, BinOp::And(_));
                     let l = self.rw(*b.left);
                     let r = self.rw(*b.right);
-                    let recv = paren_for_receiver(l);
-                    parse_quote_spanned!(sp=> #recv.spmd_and(|| #r))
-                }
-                BinOp::Or(_) => {
-                    let l = self.rw(*b.left);
-                    let r = self.rw(*b.right);
-                    let recv = paren_for_receiver(l);
-                    parse_quote_spanned!(sp=> #recv.spmd_or(|| #r))
+                    lower_logical(sp, is_and, l, r)
                 }
                 _ => {
                     let mut b = b;
@@ -1353,18 +1347,10 @@ impl Rewriter {
             }
             Expr::Binary(b) if matches!(b.op, BinOp::And(_) | BinOp::Or(_)) => {
                 let sp = b.op.span();
-                let method = Ident::new(
-                    if matches!(b.op, BinOp::And(_)) {
-                        "spmd_and"
-                    } else {
-                        "spmd_or"
-                    },
-                    sp,
-                );
+                let is_and = matches!(b.op, BinOp::And(_));
                 let l = self.rw_cond(*b.left);
                 let r = self.rw_cond(*b.right);
-                let recv = paren_for_receiver(l);
-                parse_quote_spanned!(sp=> #recv.#method(|| #r))
+                lower_logical(sp, is_and, l, r)
             }
             Expr::Let(l) => {
                 self.err(
@@ -1376,6 +1362,27 @@ impl Rewriter {
             other => self.rw(other),
         }
     }
+}
+
+/// `a && b` / `a || b`: evaluate the rhs under the lhs-narrowed execution
+/// context, then combine eagerly. A uniform lhs short-circuits through the
+/// real branch `should_branch()` compiles to; a varying lhs masks the rhs's
+/// memory accesses and kernel calls lane-wise, so `i < n && a[i] > 0` never
+/// gathers a lane with `i >= n`.
+fn lower_logical(sp: Span, is_and: bool, l: Expr, r: Expr) -> Expr {
+    let narrow = Ident::new(if is_and { "and_cond" } else { "and_not_cond" }, sp);
+    let combine = Ident::new(if is_and { "spmd_and" } else { "spmd_or" }, sp);
+    parse_quote_spanned!(sp=> ({
+        let __c1 = #l;
+        let __exec1 = __exec.#narrow(__c1);
+        let __c2 = if __exec1.should_branch() {
+            let __exec = __exec1;
+            #r
+        } else {
+            ::core::default::Default::default()
+        };
+        __c1.#combine(__c2)
+    }))
 }
 
 fn block_stmt(stmts: Vec<Stmt>) -> Stmt {

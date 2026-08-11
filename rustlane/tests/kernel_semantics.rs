@@ -480,6 +480,34 @@ fn logic_ops() {
 }
 
 #[kernel]
+fn k_guarded_gather(i: Varying<i32>, a: &[i32], n: i32, j: usize, m: usize) -> Varying<i32> {
+    let mut r = Varying::splat(0);
+    if i < n && a[i] > 10 {
+        r = 1;
+    }
+    if i >= n || a[i] > 20 {
+        r += 2;
+    }
+    if j < m && a[j] > 10 {
+        r += 4;
+    }
+    r
+}
+
+// The rhs of `&&`/`||` must be evaluated under the lhs-narrowed mask: lanes
+// (and the uniform path) failing the guard must not perform the `a[..]` reads.
+#[test]
+fn short_circuit_masks_rhs() {
+    let a = [0i32, 15, 25, 5, 30];
+    let n = a.len() as i32;
+    let iv = Varying::from_array([0, 1, 2, 3, 4, 5, 6, 7]);
+    let got = k_guarded_gather::<8, _>(AllOn, iv, &a, n, 9, a.len()).to_array();
+    for (l, want) in [0, 1, 3, 0, 3, 2, 2, 2].into_iter().enumerate() {
+        assert_eq!(got[l], want, "lane {l}");
+    }
+}
+
+#[kernel]
 fn k_cast(x: Varying<f32>) -> Varying<i32> {
     let mut r = Varying::splat(0);
     if x > 2.0 {

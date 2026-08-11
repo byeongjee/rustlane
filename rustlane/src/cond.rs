@@ -4,9 +4,10 @@
 //! Rust comparison operators must return `bool`, so `#[kernel]` rewrites
 //! `< > <= >= == !=` into these trait calls. The associated `Cond` type
 //! carries uniformity: `bool` for uniform comparisons, `Mask<i32, N>` (the
-//! canonical condition currency) for varying ones. `&&`/`||` become the lazy
-//! [`SpmdAnd`]/[`SpmdOr`] forms, which preserve short-circuiting when the
-//! left-hand side is uniform and degrade to mask AND/OR when varying.
+//! canonical condition currency) for varying ones. `&&`/`||` are lowered by
+//! the macro into an evaluation of the right-hand side under the
+//! lhs-narrowed execution context, followed by the eager
+//! [`SpmdAnd`]/[`SpmdOr`] combine.
 
 use crate::varying::Varying;
 use core::simd::cmp::{SimdPartialEq, SimdPartialOrd};
@@ -193,27 +194,41 @@ where
     }
 }
 
-/// Rewrite target for `&&`: `a && b` becomes `a.spmd_and(|| b)`.
-/// Uniform lhs short-circuits for real; varying lhs evaluates the rhs and
-/// ANDs masks (ISPC semantics — kernel expressions are effect-free by the
-/// supported-subset rules, so unconditional rhs evaluation is sound).
+/// Final combine of the `&&` lowering. `a && b` expands to
+///
+/// ```text
+/// {
+///     let __c1 = a;
+///     let __exec1 = __exec.and_cond(__c1);
+///     let __c2 = if __exec1.should_branch() { let __exec = __exec1; b }
+///                else { Default::default() };
+///     __c1.spmd_and(__c2)
+/// }
+/// ```
+///
+/// so the rhs is evaluated under the lhs-narrowed execution context: a
+/// uniform lhs short-circuits with a real branch, and a varying lhs masks
+/// the rhs's memory accesses and kernel calls lane-wise (`i < n && a[i] > 0`
+/// never gathers a lane with `i >= n`). The trait itself is the eager
+/// bool/mask AND at the end.
 #[diagnostic::on_unimplemented(
     message = "`{Self}` cannot appear on the left of `&&` in an rustlane kernel",
     label = "expected `bool` or `Mask<i32, N>`"
 )]
 pub trait SpmdAnd<Rhs = Self> {
     type Out;
-    fn spmd_and(self, rhs: impl FnOnce() -> Rhs) -> Self::Out;
+    fn spmd_and(self, rhs: Rhs) -> Self::Out;
 }
 
-/// Rewrite target for `||`: `a || b` becomes `a.spmd_or(|| b)`.
+/// Final combine of the `||` lowering; the rhs is evaluated under the
+/// lhs-NEGATED narrowed context (`and_not_cond`). See [`SpmdAnd`].
 #[diagnostic::on_unimplemented(
     message = "`{Self}` cannot appear on the left of `||` in an rustlane kernel",
     label = "expected `bool` or `Mask<i32, N>`"
 )]
 pub trait SpmdOr<Rhs = Self> {
     type Out;
-    fn spmd_or(self, rhs: impl FnOnce() -> Rhs) -> Self::Out;
+    fn spmd_or(self, rhs: Rhs) -> Self::Out;
 }
 
 /// Rewrite target for unary `!` on conditions.
@@ -229,80 +244,64 @@ pub trait SpmdNot {
 impl SpmdAnd for bool {
     type Out = bool;
     #[inline(always)]
-    fn spmd_and(self, rhs: impl FnOnce() -> bool) -> bool {
-        if self {
-            rhs()
-        } else {
-            false
-        }
+    fn spmd_and(self, rhs: bool) -> bool {
+        self & rhs
     }
 }
 
 impl<const N: usize> SpmdAnd<Mask<i32, N>> for bool {
     type Out = Mask<i32, N>;
     #[inline(always)]
-    fn spmd_and(self, rhs: impl FnOnce() -> Mask<i32, N>) -> Mask<i32, N> {
-        if self {
-            rhs()
-        } else {
-            Mask::splat(false)
-        }
+    fn spmd_and(self, rhs: Mask<i32, N>) -> Mask<i32, N> {
+        Mask::splat(self) & rhs
     }
 }
 
 impl<const N: usize> SpmdAnd for Mask<i32, N> {
     type Out = Mask<i32, N>;
     #[inline(always)]
-    fn spmd_and(self, rhs: impl FnOnce() -> Mask<i32, N>) -> Mask<i32, N> {
-        self & rhs()
+    fn spmd_and(self, rhs: Mask<i32, N>) -> Mask<i32, N> {
+        self & rhs
     }
 }
 
 impl<const N: usize> SpmdAnd<bool> for Mask<i32, N> {
     type Out = Mask<i32, N>;
     #[inline(always)]
-    fn spmd_and(self, rhs: impl FnOnce() -> bool) -> Mask<i32, N> {
-        self & Mask::splat(rhs())
+    fn spmd_and(self, rhs: bool) -> Mask<i32, N> {
+        self & Mask::splat(rhs)
     }
 }
 
 impl SpmdOr for bool {
     type Out = bool;
     #[inline(always)]
-    fn spmd_or(self, rhs: impl FnOnce() -> bool) -> bool {
-        if self {
-            true
-        } else {
-            rhs()
-        }
+    fn spmd_or(self, rhs: bool) -> bool {
+        self | rhs
     }
 }
 
 impl<const N: usize> SpmdOr<Mask<i32, N>> for bool {
     type Out = Mask<i32, N>;
     #[inline(always)]
-    fn spmd_or(self, rhs: impl FnOnce() -> Mask<i32, N>) -> Mask<i32, N> {
-        if self {
-            Mask::splat(true)
-        } else {
-            rhs()
-        }
+    fn spmd_or(self, rhs: Mask<i32, N>) -> Mask<i32, N> {
+        Mask::splat(self) | rhs
     }
 }
 
 impl<const N: usize> SpmdOr for Mask<i32, N> {
     type Out = Mask<i32, N>;
     #[inline(always)]
-    fn spmd_or(self, rhs: impl FnOnce() -> Mask<i32, N>) -> Mask<i32, N> {
-        self | rhs()
+    fn spmd_or(self, rhs: Mask<i32, N>) -> Mask<i32, N> {
+        self | rhs
     }
 }
 
 impl<const N: usize> SpmdOr<bool> for Mask<i32, N> {
     type Out = Mask<i32, N>;
     #[inline(always)]
-    fn spmd_or(self, rhs: impl FnOnce() -> bool) -> Mask<i32, N> {
-        self | Mask::splat(rhs())
+    fn spmd_or(self, rhs: bool) -> Mask<i32, N> {
+        self | Mask::splat(rhs)
     }
 }
 
@@ -360,39 +359,29 @@ mod tests {
     }
 
     #[test]
-    fn uniform_and_or_short_circuit() {
-        let mut evaluated = false;
-        let r = false.spmd_and(|| {
-            evaluated = true;
-            true
-        });
-        assert!(!r && !evaluated);
-
-        let mut evaluated = false;
-        let r = true.spmd_or(|| {
-            evaluated = true;
-            false
-        });
-        assert!(r && !evaluated);
-
-        assert!(true.spmd_and(|| true));
-        assert!(!false.spmd_or(|| false));
+    fn uniform_and_or() {
+        assert!(true.spmd_and(true));
+        assert!(!true.spmd_and(false));
+        assert!(!false.spmd_and(true));
+        assert!(true.spmd_or(false));
+        assert!(false.spmd_or(true));
+        assert!(!false.spmd_or(false));
     }
 
     #[test]
     fn mixed_and_or() {
         let m = M::from_array([true, false, true, false]);
-        let r: M = false.spmd_and(|| m);
+        let r: M = false.spmd_and(m);
         assert_eq!(r.to_array(), [false; N]);
-        let r: M = true.spmd_and(|| m);
+        let r: M = true.spmd_and(m);
         assert_eq!(r, m);
-        let r: M = true.spmd_or(|| m);
+        let r: M = true.spmd_or(m);
         assert_eq!(r.to_array(), [true; N]);
         let n = M::from_array([true, true, false, false]);
-        assert_eq!(m.spmd_and(|| n).to_array(), [true, false, false, false]);
-        assert_eq!(m.spmd_or(|| n).to_array(), [true, true, true, false]);
-        assert_eq!(m.spmd_and(|| true), m);
-        assert_eq!(m.spmd_or(|| false), m);
+        assert_eq!(m.spmd_and(n).to_array(), [true, false, false, false]);
+        assert_eq!(m.spmd_or(n).to_array(), [true, true, true, false]);
+        assert_eq!(m.spmd_and(true), m);
+        assert_eq!(m.spmd_or(false), m);
     }
 
     #[test]

@@ -117,11 +117,11 @@ fn gather_modify_scatter_template() {
 #[test]
 fn logical_and_cast_and_literal_index_emissions() {
     let p = Vf::from_array([0.5, 1.5, 2.5, 3.5]);
-    let inside = p.spmd_ge(1.0f32).spmd_and(|| p.spmd_le(3.0f32));
+    let inside = p.spmd_ge(1.0f32).spmd_and(p.spmd_le(3.0f32));
     assert_eq!(inside.to_array(), [false, true, true, false]);
     let outside = inside.spmd_not();
     assert_eq!(outside.to_array(), [true, false, false, true]);
-    let m = true.spmd_and(|| p.spmd_gt(2.0f32));
+    let m = true.spmd_and(p.spmd_gt(2.0f32));
     assert_eq!(m.to_array(), [false, false, true, true]);
 
     let v: Varying<i32, N> = SpmdCast::<i32>::spmd_cast(p);
@@ -227,14 +227,25 @@ fn tri_hit_shape(b1: Vf, t: Vf, mint: f32, maxt: f32) -> Mask<i32, N> {
     let __exec = AllOn;
     let mut hit: Mask<i32, N> = Mask::splat(true);
     {
-        let __c = b1.spmd_lt(0.0f32).spmd_or(|| b1.spmd_gt(1.0f32));
+        let __c = ({
+            let __c1 = b1.spmd_lt(0.0f32);
+            let __exec1 = __exec.and_not_cond(__c1);
+            let __c2 = if __exec1.should_branch() {
+                let __exec = __exec1;
+                let _ = __exec;
+                b1.spmd_gt(1.0f32)
+            } else {
+                Default::default()
+            };
+            __c1.spmd_or(__c2)
+        });
         let __exec1 = __exec.and_cond(__c);
         if __exec1.should_branch() {
             hit.masked_assign(__exec1, false);
         }
     }
     {
-        let __c = t.spmd_lt(mint).spmd_or(|| t.spmd_gt(maxt));
+        let __c = t.spmd_lt(mint).spmd_or(t.spmd_gt(maxt));
         let __exec1 = __exec.and_cond(__c);
         if __exec1.should_branch() {
             hit.masked_assign(__exec1, false);
